@@ -1,163 +1,111 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import AppHeader from '../components/AppHeader';
+import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { useDispatch } from 'react-redux';
+import { toggleFavorite, addToLibrary } from '../../flux/actions/bookActions';
+import { Ionicons } from '@expo/vector-icons';
+import colors from '../../theme/colors';
 
-const BookDetailsScreen = () => {
-  
-  // Dados simulados (depois virão da navegação)
-  const book = {
-    title: "Lola",
-    author: "Arthur Griffiths",
-    coverUrl: "https://www.gutenberg.org/cache/epub/56578/pg56578.cover.medium.jpg", // Imagem de exemplo
-    description: "Uma história fascinante sobre..."
-  };
+const BookDetailsScreen = ({ route }) => {
+  const { book } = route.params;
+  const dispatch = useDispatch();
 
   return (
-    <View style={styles.container}>
-      {/* 1. Cabeçalho com seta de voltar (simulada por enquanto) */}
-      <AppHeader title="Detalhes do Livro" />
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Image source={{ uri: book.cover }} style={styles.cover} resizeMode="contain" />
+        <Text style={styles.title}>{book.title}</Text>
+        <Text style={styles.author}>{book.author}</Text>
+      </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        
-        {/* 2. Cartão Principal (Capa e Título) */}
-        <View style={styles.mainCard}>
-          <Image 
-            source={{ uri: book.coverUrl }} 
-            style={styles.coverImage} 
-            resizeMode="contain"
-          />
-          <Text style={styles.bookTitle}>{book.title}</Text>
-          <Text style={styles.bookAuthor}>{book.author}</Text>
-        </View>
+      {/* Botão Azul - Começar a Ler */}
+      <TouchableOpacity style={styles.blueButton}>
+        <Ionicons name="play" size={20} color="#FFF" style={{marginRight: 8}} />
+        <Text style={styles.blueButtonText}>Começar a Ler!</Text>
+      </TouchableOpacity>
 
-        {/* 3. Botão "Começar a Ler!" */}
+      <Text style={styles.sectionHeader}>Adicionar a Estantes</Text>
+
+      {/* Botões de Ação Rápida */}
+      <View style={styles.actionRow}>
         <TouchableOpacity 
-          style={styles.readButton}
-          onPress={() => Alert.alert('Leitura', 'Abrir leitor...')}
+          style={styles.outlineButton}
+          onPress={() => dispatch(toggleFavorite(book))}
         >
-          <Text style={styles.readButtonText}>▶ Começar a Ler!</Text>
+          <Ionicons name="heart-outline" size={20} color={colors.text} />
+          <Text style={styles.outlineText}>Favoritos</Text>
         </TouchableOpacity>
 
-        {/* 4. Secção "Adicionar a Estantes" */}
-        <Text style={styles.sectionLabel}>Adicionar a Estantes</Text>
-        
-        <View style={styles.actionsRow}>
-          {/* Botão Favoritos (Outline) */}
-          <TouchableOpacity style={styles.outlineButton} onPress={() => Alert.alert('Favoritos')}>
-            <Text style={styles.outlineButtonText}>📖 Favoritos</Text>
-          </TouchableOpacity>
-
-          {/* Botão Wishlist (Outline) */}
-          <TouchableOpacity style={styles.outlineButton} onPress={() => Alert.alert('Wishlist')}>
-            <Text style={styles.outlineButtonText}>♥ Wishlist</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Botão Minha Biblioteca (Roxo Cheio) */}
-        <TouchableOpacity style={styles.libraryButton} onPress={() => Alert.alert('Biblioteca')}>
-          <Text style={styles.libraryButtonText}>📚 Adicionar à Minha Biblioteca</Text>
+        <TouchableOpacity style={styles.outlineButton}>
+          <Ionicons name="list" size={20} color={colors.text} />
+          <Text style={styles.outlineText}>Wishlist</Text>
         </TouchableOpacity>
+      </View>
 
-        {/* 5. Sinopse */}
-        <Text style={styles.sectionLabel}>Sinopse</Text>
-        <Text style={styles.description}>
+      {/* Botão Roxo - Adicionar à Biblioteca */}
+      <TouchableOpacity 
+        style={styles.purpleButton}
+        onPress={() => dispatch(addToLibrary(book))}
+      >
+        <Ionicons name="library" size={20} color="#FFF" style={{marginRight: 10}} />
+        <Text style={styles.purpleButtonText}>Adicionar à Minha Biblioteca</Text>
+      </TouchableOpacity>
+
+      <View style={styles.synopsisContainer}>
+        <Text style={styles.sectionHeader}>Sinopse</Text>
+        <Text style={styles.synopsisText}>
           {book.description || "No description available."}
         </Text>
-
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F3E5AB', // O Bege clássico
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  mainCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 20,
-    alignItems: 'center',
-    marginBottom: 20,
-    elevation: 2,
-  },
-  coverImage: {
-    width: 120,
-    height: 180,
-    marginBottom: 15,
-  },
-  bookTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#254E70',
-    textAlign: 'center',
-    marginBottom: 5,
-  },
-  bookAuthor: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  readButton: {
-    backgroundColor: '#254E70', // Azul Escuro
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 20,
-    elevation: 3,
-  },
-  readButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  sectionLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  actionsRow: {
+  container: { flex: 1, backgroundColor: colors.background, padding: 20 },
+  header: { alignItems: 'center', marginBottom: 20 },
+  cover: { width: 120, height: 180, marginBottom: 15 },
+  title: { fontSize: 22, fontWeight: 'bold', color: colors.header, textAlign: 'center' },
+  author: { fontSize: 16, color: '#666', marginTop: 5 },
+  
+  blueButton: {
+    backgroundColor: '#2D4059', // Azul Escuro do print
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
   },
+  blueButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+
+  sectionHeader: { fontSize: 16, fontWeight: 'bold', color: '#333', marginBottom: 10 },
+  
+  actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
   outlineButton: {
+    flex: 0.48,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#254E70',
+    borderColor: '#CCC',
+    padding: 10,
     borderRadius: 8,
-    paddingVertical: 10,
-    width: '48%', // Para ficarem lado a lado
+    backgroundColor: '#FFF'
+  },
+  outlineText: { marginLeft: 8, color: '#333' },
+
+  purpleButton: {
+    backgroundColor: '#8E24AA', // Roxo vibrante do print
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  outlineButtonText: {
-    color: '#254E70',
-    fontWeight: '600',
-  },
-  libraryButton: {
-    backgroundColor: '#9C27B0', // Roxo
-    paddingVertical: 12,
+    padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 25,
-    elevation: 2,
+    marginBottom: 20,
   },
-  libraryButtonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  description: {
-    fontSize: 14,
-    color: '#444',
-    lineHeight: 22,
-  }
+  purpleButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  
+  synopsisText: { color: '#555', lineHeight: 22 },
+  synopsisContainer: { marginBottom: 40 },
 });
 
 export default BookDetailsScreen;

@@ -1,69 +1,79 @@
-import { 
-  SEARCH_BOOKS, 
-  TOGGLE_FAVORITE, 
-  TOGGLE_WISHLIST, 
-  ADD_TO_LIBRARY 
-} from '../actions';
+// src/flux/reducers/booksReducer.js
+import * as types from '../types';
 
-// Estado Inicial (vazio ou com dados de teste)
 const initialState = {
-  searchResults: [], // Lista da pesquisa
-  myLibrary: [],     // Minha Biblioteca (Botão Roxo Grande)
-  favorites: [],     // Favoritos (Coração)
-  wishlist: [],      // Lista de Desejos
-  readingNow: [],    // Livros em Leitura (Painel do Topo)
+  books: [],
+  loading: false,
+  error: null,
+  selectedBook: null,
 };
 
-const bookReducer = (state = initialState, action) => {
+const booksReducer = (state = initialState, action) => {
   switch (action.type) {
-    case SEARCH_BOOKS:
+    case types.SET_BOOKS:
       return {
         ...state,
-        searchResults: action.payload,
+        books: action.payload,
+        loading: false,
       };
 
-    case ADD_TO_LIBRARY:
-      // Verifica se o livro já existe para não duplicar
-      if (state.myLibrary.find(book => book.id === action.payload.id)) {
-        return state;
-      }
+    case types.ADD_BOOK:
       return {
         ...state,
-        myLibrary: [...state.myLibrary, action.payload],
+        books: [...state.books, action.payload],
       };
 
-    case TOGGLE_FAVORITE:
-      // Se já existe, remove. Se não existe, adiciona.
-      const isFavorite = state.favorites.find(book => book.id === action.payload.id);
-      if (isFavorite) {
-        return {
-          ...state,
-          favorites: state.favorites.filter(book => book.id !== action.payload.id),
-        };
-      } else {
-        return {
-          ...state,
-          favorites: [...state.favorites, action.payload],
-        };
-      }
+    case types.UPDATE_BOOK:
+      return {
+        ...state,
+        books: state.books.map((book) =>
+          book._id === action.payload.bookId
+            ? { ...book, ...action.payload.updates }
+            : book
+        ),
+      };
 
-    case TOGGLE_WISHLIST:
-      const inWishlist = state.wishlist.find(book => book.id === action.payload.id);
-      if (inWishlist) {
-        return {
-          ...state,
-          wishlist: state.wishlist.filter(book => book.id !== action.payload.id),
-        };
-      } else {
-        return {
-          ...state,
-          wishlist: [...state.wishlist, action.payload],
-        };
-      }
+    case types.REMOVE_BOOK:
+      return {
+        ...state,
+        books: state.books.filter((book) => book._id !== action.payload),
+      };
+
+    case types.TOGGLE_FAVORITE:
+      return {
+        ...state,
+        books: state.books.map((book) =>
+          book._id === action.payload
+            ? { ...book, isFavorite: !book.isFavorite }
+            : book
+        ),
+      };
+
+    case types.TOGGLE_WISHLIST:
+      return {
+        ...state,
+        books: state.books.map((book) =>
+          book._id === action.payload
+            ? {
+                ...book,
+                status: book.status === 'wishlist' ? 'reading' : 'wishlist',
+              }
+            : book
+        ),
+      };
 
     default:
       return state;
   }
 };
 
-export default bookReducer;
+export default booksReducer;
+
+// Selectors
+export const getAllBooks = (state) => state.books.books;
+export const getBooksByStatus = (state, status) =>
+  state.books.books.filter((book) => book.status === status);
+export const getFavoriteBooks = (state) =>
+  state.books.books.filter((book) => book.isFavorite);
+export const getReadingBooks = (state) =>
+  state.books.books.filter((book) => book.status === 'reading');
