@@ -25,13 +25,16 @@ const FavoritesScreen = ({ navigation }) => {
 
   const loadFavorites = async () => {
     try {
+      console.log('[FavoritesScreen] Carregando favoritos...');
       setLoading(true);
       const allBooks = await getBooks();
+      console.log('[FavoritesScreen] Total de livros:', allBooks.length);
       const favoriteBooks = allBooks.filter(book => book.isFavorite === true);
+      console.log('[FavoritesScreen] Favoritos encontrados:', favoriteBooks.length);
       setFavorites(favoriteBooks);
-      console.log(`${favoriteBooks.length} favoritos`);
     } catch (error) {
-      console.error('Erro ao carregar favoritos:', error);
+      console.error('[FavoritesScreen] Erro ao carregar favoritos:', error);
+      Alert.alert('Erro', 'Não foi possível carregar os favoritos');
     } finally {
       setLoading(false);
     }
@@ -54,11 +57,7 @@ const FavoritesScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              const updatedBook = {
-                ...book,
-                isFavorite: false,
-              };
-              await updateBook(book._id, updatedBook);
+              await updateBook(book._id, { isFavorite: false });
               setFavorites(favorites.filter(b => b._id !== book._id));
               Alert.alert('Sucesso', 'Livro removido dos favoritos');
             } catch (error) {
@@ -71,52 +70,62 @@ const FavoritesScreen = ({ navigation }) => {
     );
   };
 
-  const renderBook = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.bookCard}
-      onPress={() => navigation.navigate('BookDetails', { book: item })}
-      activeOpacity={0.9}
-    >
-      <View style={styles.coverContainer}>
-        {item.cover ? (
-          <Image source={{ uri: item.cover }} style={styles.bookImage} />
-        ) : (
-          <View style={[styles.bookImage, styles.noCover]}>
-            <Icon name="book" size={35} color="#2A5288" />
-          </View>
-        )}
-      </View>
-      
-      <View style={styles.bookInfo}>
-        <Text style={styles.bookTitle} numberOfLines={2}>{item.title}</Text>
-        <Text style={styles.bookAuthor} numberOfLines={1}>
-          {item.author || 'Autor Desconhecido'}
-        </Text>
-        
-        <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
-          <Text style={styles.statusText}>
-            {item.status === 'reading' ? '📖 Lendo' :
-             item.status === 'wishlist' ? '💭 Wishlist' :
-             item.status === 'read' ? '✅ Lido' : '📚 Não Lido'}
-          </Text>
-        </View>
-
-        {item.pages > 0 && (
-          <View style={styles.pagesRow}>
-            <Icon name="menu-book" size={14} color="#999" />
-            <Text style={styles.pagesText}>{item.pages} páginas</Text>
-          </View>
-        )}
-      </View>
-      
-      <TouchableOpacity
-        style={styles.favoriteButton}
-        onPress={() => handleRemoveFavorite(item)}
+  const renderBook = ({ item }) => {
+    console.log('[FavoritesScreen] Renderizando livro:', item.title);
+    
+    return (
+      <TouchableOpacity 
+        style={styles.bookCard}
+        onPress={() => {
+          console.log('[FavoritesScreen] Navegando para LibraryBookDetails com viewOnly: true');
+          navigation.navigate('LibraryBookDetails', { 
+            book: item,
+            viewOnly: true
+          });
+        }}
+        activeOpacity={0.9}
       >
-        <Icon name="favorite" size={28} color="#E91E63" />
+        <View style={styles.coverContainer}>
+          {item.cover ? (
+            <Image source={{ uri: item.cover }} style={styles.bookImage} />
+          ) : (
+            <View style={[styles.bookImage, styles.noCover]}>
+              <Icon name="book" size={35} color="#2A5288" />
+            </View>
+          )}
+        </View>
+        
+        <View style={styles.bookInfo}>
+          <Text style={styles.bookTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.bookAuthor} numberOfLines={1}>
+            {item.author || 'Autor Desconhecido'}
+          </Text>
+          
+          <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
+            <Text style={styles.statusText}>
+              {item.status === 'reading' ? '📖 Lendo' :
+               item.status === 'wishlist' ? '💭 Wishlist' :
+               item.status === 'read' ? '✅ Lido' : '📚 Não Lido'}
+            </Text>
+          </View>
+
+          {item.pages > 0 && (
+            <View style={styles.pagesRow}>
+              <Icon name="menu-book" size={14} color="#999" />
+              <Text style={styles.pagesText}>{item.pages} páginas</Text>
+            </View>
+          )}
+        </View>
+        
+        <TouchableOpacity
+          style={styles.favoriteButton}
+          onPress={() => handleRemoveFavorite(item)}
+        >
+          <Icon name="favorite" size={28} color="#E91E63" />
+        </TouchableOpacity>
       </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -223,7 +232,7 @@ const FavoritesScreen = ({ navigation }) => {
   );
 };
 
-const favoriteStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#E8D5A8' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, fontSize: 16, color: '#4A4A4A', fontWeight: '500' },
@@ -236,6 +245,10 @@ const favoriteStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   statsCard: {
     backgroundColor: '#FFFFFF',
@@ -244,6 +257,10 @@ const favoriteStyles = StyleSheet.create({
     padding: 22,
     borderRadius: 16,
     elevation: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.06)',
   },
@@ -260,15 +277,38 @@ const favoriteStyles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     elevation: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.06)',
   },
   coverContainer: { marginRight: 16 },
-  bookImage: { width: 75, height: 110, borderRadius: 8, backgroundColor: '#E0E0E0' },
-  noCover: { justifyContent: 'center', alignItems: 'center' },
+  bookImage: { 
+    width: 75, 
+    height: 110, 
+    borderRadius: 8, 
+    backgroundColor: '#E0E0E0' 
+  },
+  noCover: { 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+  },
   bookInfo: { flex: 1, justifyContent: 'center' },
-  bookTitle: { fontSize: 17, fontWeight: 'bold', color: '#2A5288', marginBottom: 6 },
-  bookAuthor: { fontSize: 14, color: '#666', marginBottom: 8 },
+  bookTitle: { 
+    fontSize: 17, 
+    fontWeight: 'bold', 
+    color: '#2A5288', 
+    marginBottom: 6,
+    lineHeight: 22,
+  },
+  bookAuthor: { 
+    fontSize: 14, 
+    color: '#666', 
+    marginBottom: 8 
+  },
   statusBadge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 10,
@@ -281,12 +321,36 @@ const favoriteStyles = StyleSheet.create({
   status_read: { backgroundColor: '#E6F9F0' },
   status_unread: { backgroundColor: '#F5F5F5' },
   statusText: { fontSize: 11, fontWeight: '600' },
-  pagesRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  pagesRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    gap: 6 
+  },
   pagesText: { fontSize: 12, color: '#999' },
-  favoriteButton: { padding: 10, justifyContent: 'center' },
-  emptyContainer: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 30 },
-  emptyTitle: { fontSize: 22, fontWeight: 'bold', color: '#000', marginTop: 20, marginBottom: 12 },
-  emptyText: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 30, lineHeight: 22 },
+  favoriteButton: { 
+    padding: 10, 
+    justifyContent: 'center' 
+  },
+  emptyContainer: { 
+    alignItems: 'center', 
+    paddingVertical: 80, 
+    paddingHorizontal: 30 
+  },
+  emptyTitle: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: '#000', 
+    marginTop: 20, 
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyText: { 
+    fontSize: 15, 
+    color: '#666', 
+    textAlign: 'center', 
+    marginBottom: 30, 
+    lineHeight: 22 
+  },
   emptyButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -295,10 +359,16 @@ const favoriteStyles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 25,
     elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
-  emptyButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  emptyButtonText: { 
+    color: '#fff', 
+    fontSize: 16, 
+    fontWeight: '700' 
+  },
 });
 
-// Exportar com os estilos corretos
-const styles = favoriteStyles;
 export default FavoritesScreen;

@@ -77,12 +77,7 @@ const WishListScreen = ({ navigation }) => {
           text: 'Sim',
           onPress: async () => {
             try {
-              const updatedBook = {
-                ...book,
-                status: 'reading',
-                last_read: new Date().toISOString(),
-              };
-              await updateBook(book._id, updatedBook);
+              await updateBook(book._id, { status: 'reading', last_read: new Date().toISOString() });
               setWishlist(wishlist.filter(b => b._id !== book._id));
               Alert.alert('Sucesso', 'Livro movido para "A Ler"!');
               navigation.navigate('ReadingBooks');
@@ -98,10 +93,8 @@ const WishListScreen = ({ navigation }) => {
 
   const renderBook = ({ item }) => (
     <View style={wishlistStyles.bookCard}>
-      <TouchableOpacity 
-        style={wishlistStyles.bookContent}
-        onPress={() => navigation.navigate('BookDetails', { book: item })}
-      >
+      {/* Removido TouchableOpacity - não navega mais */}
+      <View style={wishlistStyles.bookContent}>
         <View style={wishlistStyles.coverContainer}>
           {item.cover ? (
             <Image source={{ uri: item.cover }} style={wishlistStyles.bookImage} />
@@ -132,7 +125,7 @@ const WishListScreen = ({ navigation }) => {
             </View>
           )}
         </View>
-      </TouchableOpacity>
+      </View>
       
       <View style={wishlistStyles.actionButtons}>
         <TouchableOpacity

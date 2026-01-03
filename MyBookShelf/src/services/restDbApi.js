@@ -1,3 +1,4 @@
+// src/services/restDbApi.js - COM ENDPOINTS DE LISTAS
 import { API_KEY, DATABASE_URL } from '../consts/config';
 
 const headers = {
@@ -9,8 +10,6 @@ const headers = {
 const logDebug = (operation, data) => {
   console.log(`\n[RestDB] ${operation}`);
   console.log('Data:', JSON.stringify(data, null, 2));
-  console.log('API Key:', API_KEY ? 'Configurada' : 'FALTA');
-  console.log('URL:', DATABASE_URL);
 };
 
 const logError = (operation, error) => {
@@ -26,21 +25,26 @@ const normalizeBook = (book) => {
     isbn: isbn,
     title: book.title || 'Sem título',
     author: book.author || book.author_name?.[0] || 'Autor desconhecido',
-    coverUrl: book.coverUrl || 
-              (book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg` : ''),
+    cover: book.cover || book.coverUrl || 
+           (book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg` : ''),
     description: book.description?.value || book.description || '',
     publishYear: book.publish_year?.[0] || book.first_publish_year || '',
     pages: book.number_of_pages_median || book.pages || 0,
     rating: book.rating || 0,
     status: book.status || 'wishlist',
     isFavorite: book.isFavorite || false,
-    currentPage: book.currentPage || 0,
+    isWishlist: book.isWishlist || false,
+    currentPage: book.currentPage || book.current_page || 0,
+    current_page: book.current_page || book.currentPage || 0,
+    progress: book.progress || 0,
     notes: book.notes || '',
     categories: Array.isArray(book.subject) ? book.subject.join(', ') : (book.categories || ''),
     language: book.language?.[0] || 'pt',
     publisher: book.publisher?.[0] || '',
   };
 };
+
+// ==================== LIVROS ====================
 
 export const addBook = async (book) => {
   try {
@@ -142,11 +146,22 @@ export const updateBook = async (id, updates) => {
   try {
     logDebug('ATUALIZAR LIVRO', { id, updates });
 
+    const currentBook = await getBookById(id);
+    
+    const updatedBook = {
+      ...currentBook,
+      ...updates,
+    };
+    
+    delete updatedBook._id;
+    
+    logDebug('LIVRO COMPLETO PARA ATUALIZAR', updatedBook);
+
     const url = `${DATABASE_URL}/books/${id}`;
     const response = await fetch(url, {
       method: 'PUT',
       headers,
-      body: JSON.stringify(updates),
+      body: JSON.stringify(updatedBook),
     });
 
     if (!response.ok) {
@@ -325,6 +340,312 @@ export const addReadingSession = async (sessionData) => {
 
   } catch (error) {
     logError('ADICIONAR SESSÃO', error);
+    throw error;
+  }
+};
+
+export const updateBookProgress = async (bookId, newPage) => {
+  try {
+    logDebug('ATUALIZAR PROGRESSO', { bookId, newPage });
+
+    const currentBook = await getBookById(bookId);
+    
+    const progress = currentBook.pages > 0 
+      ? Math.min(Math.round((newPage / currentBook.pages) * 100), 100)
+      : 0;
+    
+    const updatedBook = {
+      ...currentBook,
+      currentPage: newPage,
+      current_page: newPage,
+      progress: progress,
+      last_read: new Date().toISOString(),
+    };
+    
+    delete updatedBook._id;
+    
+    logDebug('LIVRO COM PROGRESSO ATUALIZADO', updatedBook);
+
+    const url = `${DATABASE_URL}/books/${bookId}`;
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(updatedBook),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Progresso atualizado:', data);
+    return data;
+
+  } catch (error) {
+    logError('ATUALIZAR PROGRESSO', error);
+    throw error;
+  }
+};
+
+// ==================== LISTAS ====================
+
+export const getLists = async () => {
+  try {
+    logDebug('BUSCAR LISTAS', {});
+
+    const url = `${DATABASE_URL}/lists`;
+    console.log('GET de:', url);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    console.log('Status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Erro da API:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log(`${data.length} listas encontradas`);
+    return data;
+
+  } catch (error) {
+    logError('BUSCAR LISTAS', error);
+    throw error;
+  }
+};
+
+export const getListById = async (id) => {
+  try {
+    logDebug('BUSCAR LISTA POR ID', { id });
+
+    const url = `${DATABASE_URL}/lists/${id}`;
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Lista encontrada:', data);
+    return data;
+
+  } catch (error) {
+    logError('BUSCAR LISTA POR ID', error);
+    throw error;
+  }
+};
+
+export const createList = async (listData) => {
+  try {
+    logDebug('CRIAR LISTA', listData);
+
+    const newList = {
+      name: listData.name,
+      description: listData.description || '',
+      color: listData.color || '#2A5288',
+      icon: listData.icon || 'list',
+      bookIds: [], // Array de IDs de livros
+      bookCount: 0,
+      created_date: new Date().toISOString(),
+    };
+
+    logDebug('LISTA NORMALIZADA', newList);
+
+    const url = `${DATABASE_URL}/lists`;
+    console.log('POST para:', url);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(newList),
+    });
+
+    console.log('Status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Erro da API:', errorText);
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Lista criada:', data);
+    return data;
+
+  } catch (error) {
+    logError('CRIAR LISTA', error);
+    throw error;
+  }
+};
+
+export const updateList = async (id, updates) => {
+  try {
+    logDebug('ATUALIZAR LISTA', { id, updates });
+
+    const currentList = await getListById(id);
+    
+    const updatedList = {
+      ...currentList,
+      ...updates,
+    };
+    
+    delete updatedList._id;
+    
+    logDebug('LISTA COMPLETA PARA ATUALIZAR', updatedList);
+
+    const url = `${DATABASE_URL}/lists/${id}`;
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(updatedList),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Lista atualizada:', data);
+    return data;
+
+  } catch (error) {
+    logError('ATUALIZAR LISTA', error);
+    throw error;
+  }
+};
+
+export const deleteList = async (id) => {
+  try {
+    logDebug('DELETAR LISTA', { id });
+
+    const url = `${DATABASE_URL}/lists/${id}`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    console.log('Lista deletada');
+    return true;
+
+  } catch (error) {
+    logError('DELETAR LISTA', error);
+    throw error;
+  }
+};
+
+export const addBookToList = async (listId, bookId) => {
+  try {
+    logDebug('ADICIONAR LIVRO À LISTA', { listId, bookId });
+
+    const currentList = await getListById(listId);
+    
+    if (currentList.bookIds && currentList.bookIds.includes(bookId)) {
+      throw new Error('Livro já está na lista');
+    }
+
+    const updatedBookIds = [...(currentList.bookIds || []), bookId];
+    
+    const updatedList = {
+      ...currentList,
+      bookIds: updatedBookIds,
+      bookCount: updatedBookIds.length,
+    };
+    
+    delete updatedList._id;
+
+    const url = `${DATABASE_URL}/lists/${listId}`;
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(updatedList),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Livro adicionado à lista:', data);
+    return data;
+
+  } catch (error) {
+    logError('ADICIONAR LIVRO À LISTA', error);
+    throw error;
+  }
+};
+
+export const removeBookFromList = async (listId, bookId) => {
+  try {
+    logDebug('REMOVER LIVRO DA LISTA', { listId, bookId });
+
+    const currentList = await getListById(listId);
+    
+    const updatedBookIds = (currentList.bookIds || []).filter(id => id !== bookId);
+    
+    const updatedList = {
+      ...currentList,
+      bookIds: updatedBookIds,
+      bookCount: updatedBookIds.length,
+    };
+    
+    delete updatedList._id;
+
+    const url = `${DATABASE_URL}/lists/${listId}`;
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(updatedList),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Livro removido da lista:', data);
+    return data;
+
+  } catch (error) {
+    logError('REMOVER LIVRO DA LISTA', error);
+    throw error;
+  }
+};
+
+export const getBooksFromList = async (listId) => {
+  try {
+    logDebug('BUSCAR LIVROS DA LISTA', { listId });
+
+    const list = await getListById(listId);
+    
+    if (!list.bookIds || list.bookIds.length === 0) {
+      return [];
+    }
+
+    const books = await Promise.all(
+      list.bookIds.map(bookId => getBookById(bookId))
+    );
+
+    console.log(`${books.length} livros encontrados na lista`);
+    return books;
+
+  } catch (error) {
+    logError('BUSCAR LIVROS DA LISTA', error);
     throw error;
   }
 };

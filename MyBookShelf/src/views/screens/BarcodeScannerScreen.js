@@ -1,4 +1,3 @@
-// src/views/screens/BarcodeScannerScreen.js - COM CÂMARA REAL
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -10,12 +9,11 @@ import {
   Platform,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { searchByISBN } from '../../services/openLibraryApi';
+import { searchByISBN } from '../../services/googleBooksApi';
 import { addBook } from '../../services/restDbApi';
 import colors from '../../theme/colors';
 
 const BarcodeScannerScreen = ({ navigation }) => {
-  const [scanning, setScanning] = useState(false);
   const [loading, setLoading] = useState(false);
   const webViewRef = useRef(null);
 
@@ -176,7 +174,7 @@ const BarcodeScannerScreen = ({ navigation }) => {
           try {
             const constraints = {
               video: {
-                facingMode: 'environment', // Câmara traseira
+                facingMode: 'environment',
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
               }
@@ -185,7 +183,6 @@ const BarcodeScannerScreen = ({ navigation }) => {
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
             
-            // Aguardar vídeo estar pronto
             video.onloadedmetadata = () => {
               video.play();
               startScanning();
@@ -193,10 +190,13 @@ const BarcodeScannerScreen = ({ navigation }) => {
           } catch (err) {
             console.error('Erro ao aceder à câmara:', err);
             showError('Erro ao aceder à câmara. Verifique as permissões.');
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'error',
+              message: 'Camera permission denied'
+            }));
           }
         }
 
-        // Iniciar leitura contínua
         function startScanning() {
           if (isScanning) return;
           isScanning = true;
@@ -206,10 +206,8 @@ const BarcodeScannerScreen = ({ navigation }) => {
               const code = result.text;
               console.log('Código detectado:', code);
               
-              // Validar se é ISBN (10 ou 13 dígitos)
-              if (/^\d{10}$/.test(code) || /^\d{13}$/.test(code)) {
+              if (/^\\d{10}$/.test(code) || /^\\d{13}$/.test(code)) {
                 showResult('ISBN detectado: ' + code);
-                // Enviar para React Native
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                   type: 'barcode',
                   data: code
@@ -240,10 +238,8 @@ const BarcodeScannerScreen = ({ navigation }) => {
           }, 5000);
         }
 
-        // Iniciar ao carregar
         startCamera();
 
-        // Mensagem para React Native quando a câmara estiver pronta
         window.ReactNativeWebView.postMessage(JSON.stringify({
           type: 'ready'
         }));
@@ -260,6 +256,14 @@ const BarcodeScannerScreen = ({ navigation }) => {
         console.log('Câmara pronta!');
       }
       
+      if (message.type === 'error') {
+        Alert.alert(
+          'Erro de Permissão',
+          'Não foi possível aceder à câmara. Verifique as permissões nas configurações do dispositivo.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      }
+      
       if (message.type === 'barcode') {
         const isbn = message.data;
         console.log('ISBN recebido:', isbn);
@@ -274,11 +278,9 @@ const BarcodeScannerScreen = ({ navigation }) => {
     setLoading(true);
     
     try {
-      // Buscar livro pelo ISBN
       const bookData = await searchByISBN(isbn);
       
       if (bookData) {
-        // Adicionar à biblioteca
         await addBook({
           ...bookData,
           status: 'to_read',
@@ -412,7 +414,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 15,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: colors.textPrimary || '#000',
     fontWeight: '600',
   },
 });

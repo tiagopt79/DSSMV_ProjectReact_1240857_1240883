@@ -1,4 +1,3 @@
-// src/views/screens/SearchScreen.js - SEM Redux
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -9,16 +8,26 @@ import {
   Text,
   TouchableOpacity 
 } from 'react-native';
-import { searchByTitle } from '../../services/openLibraryApi';
+import { searchByTitle } from '../../services/googleBooksApi';
 import BookCard from '../components/BookCard';
 import colors from '../../theme/colors';
 
-const SearchScreen = ({ navigation }) => {
+const SearchScreen = ({ route, navigation }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Verifica se veio de uma lista
+  const fromList = route.params?.fromList || false;
+  const listId = route.params?.listId || null;
+  const listName = route.params?.listName || null;
+
+  console.log('🔍 SearchScreen - Params recebidos:');
+  console.log('  - fromList:', fromList);
+  console.log('  - listId:', listId);
+  console.log('  - listName:', listName);
 
   // Busca inicial ao carregar
   useEffect(() => {
@@ -49,8 +58,41 @@ const SearchScreen = ({ navigation }) => {
     setSearchResults([]);
   };
 
+  const handleBookPress = (book) => {
+    console.log('📖 Livro clicado:', book.title);
+    console.log('📋 fromList:', fromList);
+
+    if (fromList) {
+      // ==== VEIO DE LISTA → LibraryBookDetailsScreen ====
+      console.log('🟢 Navegando para LibraryBookDetailsScreen (adicionar à lista)');
+      
+      navigation.navigate('LibraryBookDetails', { 
+        book: book,
+        fromList: true,
+        listId: listId,
+        listName: listName,
+      });
+    } else {
+      // ==== PESQUISA NORMAL → BookDetailsScreen ====
+      console.log('🔵 Navegando para BookDetailsScreen (comportamento normal)');
+      
+      navigation.navigate('BookDetails', { 
+        book: book,
+      });
+    }
+  };
+
   return (
     <View style={styles.container}>
+      {/* Banner se vier de uma lista */}
+      {fromList && listName && (
+        <View style={styles.listBanner}>
+          <Text style={styles.listBannerText}>
+            📚 Adicionando à lista: {listName}
+          </Text>
+        </View>
+      )}
+
       {/* Barra de pesquisa */}
       <View style={styles.searchContainer}>
         <TextInput 
@@ -82,7 +124,7 @@ const SearchScreen = ({ navigation }) => {
       {/* Error */}
       {error && !loading && (
         <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>❌ {error}</Text>
+          <Text style={styles.errorText}>⚠ {error}</Text>
           <TouchableOpacity 
             style={styles.retryButton}
             onPress={() => handleSearch()}
@@ -112,7 +154,7 @@ const SearchScreen = ({ navigation }) => {
                 renderItem={({ item }) => (
                   <BookCard 
                     book={item} 
-                    onPress={() => navigation.navigate('BookDetails', { book: item })}
+                    onPress={() => handleBookPress(item)}
                   />
                 )}
                 contentContainerStyle={styles.listContent}
@@ -129,6 +171,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  listBanner: {
+    backgroundColor: '#27AE60',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  listBannerText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   searchContainer: {
     backgroundColor: '#FFF',

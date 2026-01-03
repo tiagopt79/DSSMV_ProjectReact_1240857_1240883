@@ -17,9 +17,9 @@ const BookCard = ({ book, onPress }) => {
       activeOpacity={0.7}
     >
       <View style={styles.coverContainer}>
-        {book.coverUrl ? (
+        {book.coverUrl || book.cover ? (
           <Image 
-            source={{ uri: book.coverUrl }} 
+            source={{ uri: book.coverUrl || book.cover }} 
             style={styles.cover}
             resizeMode="cover"
           />
@@ -32,22 +32,21 @@ const BookCard = ({ book, onPress }) => {
       
       <View style={styles.infoContainer}>
         <Text style={styles.title} numberOfLines={2}>
-          {book.title}
+          {book.title || 'Sem título'}
         </Text>
         
         <Text style={styles.author} numberOfLines={1}>
-          {book.author}
+          {book.author || 'Autor desconhecido'}
         </Text>
         
-        {book.publishYear && (
+        {book.publishYear && book.publishYear !== '' && (
           <Text style={styles.year}>{book.publishYear}</Text>
         )}
         
-        {book.pages && (
+        {book.pages > 0 && (
           <Text style={styles.pages}>{book.pages} páginas</Text>
         )}
         
-        {/* Status badge (se o livro estiver na biblioteca) */}
         {book.status && (
           <View style={[styles.statusBadge, styles[`status_${book.status}`]]}>
             <Text style={styles.statusText}>
@@ -60,13 +59,14 @@ const BookCard = ({ book, onPress }) => {
   );
 };
 
-// Helper para labels de status
 const getStatusLabel = (status) => {
   const labels = {
     wishlist: '💭 Quero ler',
     reading: '📖 Lendo',
+    read: '✅ Lido',
     finished: '✅ Lido',
     abandoned: '⏸️ Abandonado',
+    unread: '📚 Não lido',
   };
   return labels[status] || status;
 };
@@ -140,10 +140,16 @@ const styles = StyleSheet.create({
   status_reading: {
     backgroundColor: '#FFF4E6',
   },
+  status_read: {
+    backgroundColor: '#E6F9F0',
+  },
   status_finished: {
     backgroundColor: '#E6F9F0',
   },
   status_abandoned: {
+    backgroundColor: '#F5F5F5',
+  },
+  status_unread: {
     backgroundColor: '#F5F5F5',
   },
   statusText: {

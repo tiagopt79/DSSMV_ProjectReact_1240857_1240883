@@ -14,11 +14,12 @@ import {
   Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { updateBookProgress, getReadingSessions, addReadingSession } from '../../services/restDbApi';
+import { updateBookProgress, getReadingSessions, addReadingSession, getBookById } from '../../services/restDbApi';
 
 const BookProgressScreen = ({ navigation, route }) => {
-  const { book } = route.params;
+  const { book: initialBook } = route.params;
   
+  const [book, setBook] = useState(initialBook); // Estado do livro atualizado
   const [currentPage, setCurrentPage] = useState('');
   const [notes, setNotes] = useState('');
   const [history, setHistory] = useState([]);
@@ -26,13 +27,24 @@ const BookProgressScreen = ({ navigation, route }) => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    loadBookData();
     loadHistory();
   }, []);
+
+  // Carregar dados atualizados do livro
+  const loadBookData = async () => {
+    try {
+      const updatedBook = await getBookById(initialBook._id);
+      setBook(updatedBook);
+    } catch (error) {
+      console.error('Erro ao carregar livro:', error);
+    }
+  };
 
   const loadHistory = async () => {
     try {
       setLoading(true);
-      const sessions = await getReadingSessions(book._id);
+      const sessions = await getReadingSessions(initialBook._id);
       setHistory(sessions);
     } catch (error) {
       console.error('Erro ao carregar histórico:', error);
@@ -42,24 +54,39 @@ const BookProgressScreen = ({ navigation, route }) => {
   };
 
   const calculateProgress = () => {
-    if (!book.pageCount || book.pageCount === 0) return 0;
-    return Math.min(Math.round((book.currentPage / book.pageCount) * 100), 100);
+    const totalPages = book.pageCount || book.pages || 0;
+    const current = book.currentPage || book.current_page || 0;
+    
+    if (!totalPages || totalPages === 0) return 0;
+    return Math.min(Math.round((current / totalPages) * 100), 100);
   };
 
   const handleSaveProgress = async () => {
     const newPage = parseInt(currentPage);
+    const totalPages = book.pageCount || book.pages || 0;
+    const lastPage = book.currentPage || book.current_page || 0;
 
+    // Validações
     if (!currentPage || isNaN(newPage)) {
       Alert.alert('Erro', 'Por favor, insere uma página válida');
       return;
     }
 
-    if (newPage < 0 || newPage > book.pageCount) {
-      Alert.alert('Erro', `A página deve estar entre 0 e ${book.pageCount}`);
+    if (newPage < 0 || newPage > totalPages) {
+      Alert.alert('Erro', `A página deve estar entre 0 e ${totalPages}`);
       return;
     }
 
-    if (newPage === book.currentPage) {
+    // VALIDAÇÃO: Não permite retroceder
+    if (newPage < lastPage) {
+      Alert.alert(
+        'Aviso', 
+        `Não podes retroceder! A última página registada foi ${lastPage}. Insere uma página igual ou superior.`
+      );
+      return;
+    }
+
+    if (newPage === lastPage) {
       Alert.alert('Aviso', 'Estás na mesma página');
       return;
     }
@@ -68,15 +95,16 @@ const BookProgressScreen = ({ navigation, route }) => {
       setSaving(true);
 
       // Atualizar progresso do livro
-      await updateBookProgress(book._id, newPage);
+      const updatedBook = await updateBookProgress(initialBook._id, newPage);
+      setBook(updatedBook); // Atualiza o estado local
 
       // Adicionar sessão ao histórico
       const session = {
-        bookId: book._id,
+        bookId: initialBook._id,
         date: new Date().toISOString(),
-        startPage: book.currentPage,
+        startPage: lastPage,
         endPage: newPage,
-        pagesRead: Math.abs(newPage - book.currentPage),
+        pagesRead: newPage - lastPage,
         duration: 0,
         notes: notes || '',
       };
@@ -126,6 +154,9 @@ const BookProgressScreen = ({ navigation, route }) => {
     </View>
   );
 
+  const totalPages = book.pageCount || book.pages || 0;
+  const currentPageNum = book.currentPage || book.current_page || 0;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -145,14 +176,14 @@ const BookProgressScreen = ({ navigation, route }) => {
         {/* Informação do Livro */}
         <View style={styles.bookInfoCard}>
           <Image
-            source={{ uri: book.thumbnail || 'https://via.placeholder.com/128x196?text=Sem+Capa' }}
+            source={{ uri: book.thumbnail || book.cover || 'https://via.placeholder.com/128x196?text=Sem+Capa' }}
             style={styles.bookCover}
             resizeMode="cover"
           />
           <View style={styles.bookDetails}>
             <Text style={styles.bookTitle}>{book.title}</Text>
-            <Text style={styles.bookAuthor}>{book.authors?.join(', ') || 'Autor desconhecido'}</Text>
-            <Text style={styles.bookPages}>{book.pageCount || '?'} páginas</Text>
+            <Text style={styles.bookAuthor}>{book.authors?.join(', ') || book.author || 'Autor desconhecido'}</Text>
+            <Text style={styles.bookPages}>{totalPages || '?'} páginas</Text>
           </View>
         </View>
 
@@ -166,7 +197,7 @@ const BookProgressScreen = ({ navigation, route }) => {
           </View>
           <Text style={styles.progressPercentage}>{calculateProgress()}%</Text>
           <Text style={styles.progressPages}>
-            {book.currentPage || 0} de {book.pageCount || '?'} páginas lidas
+            {currentPageNum} de {totalPages || '?'} páginas lidas
           </Text>
         </View>
 
@@ -174,9 +205,13 @@ const BookProgressScreen = ({ navigation, route }) => {
         <View style={styles.updateCard}>
           <Text style={styles.sectionTitle}>Atualizar Progresso</Text>
           
+          <Text style={styles.helperText}>
+            Última página: {currentPageNum} | Total: {totalPages}
+          </Text>
+
           <TextInput
             style={styles.input}
-            placeholder="Página atual"
+            placeholder={`Página atual (mínimo: ${currentPageNum})`}
             placeholderTextColor="#999999"
             keyboardType="numeric"
             value={currentPage}
@@ -359,6 +394,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.22,
     shadowRadius: 2.22,
+  },
+  helperText: {
+    fontSize: 14,
+    color: '#666666',
+    marginBottom: 12,
+    fontStyle: 'italic',
   },
   input: {
     backgroundColor: '#FFFFFF',

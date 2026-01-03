@@ -10,31 +10,39 @@ import BarcodeScannerScreen from './src/views/screens/BarcodeScannerScreen';
 import BookDetailsScreen from './src/views/screens/BookDetailsScreen';
 import MyLibraryScreen from './src/views/screens/MyLibraryScreen';
 import MyListsScreen from './src/views/screens/MyListsScreen';
+import ListDetailsScreen from './src/views/screens/ListDetailsScreen'; // ← NOVA IMPORT
 import ReadingBooksScreen from './src/views/screens/ReadingBooksScreen';
 import WishListScreen from './src/views/screens/WishListScreen';
 import FavoritesScreen from './src/views/screens/FavoritesScreen';
 import BookProgressScreen from './src/views/screens/BookProgressScreen';
+import LibraryBookDetailsScreen from './src/views/screens/LibraryBookDetailsScreen';
 
 const App = () => {
   // Estado de navegação
   const [currentScreen, setCurrentScreen] = useState('Home');
   const [screenParams, setScreenParams] = useState({});
-  const [screenStack, setScreenStack] = useState(['Home']);
+  const [navigationHistory, setNavigationHistory] = useState([
+    { screen: 'Home', params: {} }
+  ]);
 
   // Função de navegação
   const navigate = (screenName, params = {}) => {
+    console.log('🚀 Navegando para:', screenName, 'com params:', params);
     setCurrentScreen(screenName);
     setScreenParams(params);
-    setScreenStack([...screenStack, screenName]);
+    setNavigationHistory([...navigationHistory, { screen: screenName, params }]);
   };
 
   // Função de voltar
   const goBack = () => {
-    if (screenStack.length > 1) {
-      const newStack = screenStack.slice(0, -1);
-      setScreenStack(newStack);
-      setCurrentScreen(newStack[newStack.length - 1]);
-      setScreenParams({});
+    if (navigationHistory.length > 1) {
+      const newHistory = navigationHistory.slice(0, -1);
+      const previous = newHistory[newHistory.length - 1];
+      
+      console.log('⬅️ Voltando para:', previous.screen);
+      setNavigationHistory(newHistory);
+      setCurrentScreen(previous.screen);
+      setScreenParams(previous.params);
     }
   };
 
@@ -61,12 +69,18 @@ const App = () => {
       
       case 'BookDetails':
         return <BookDetailsScreen {...navigationProps} />;
+        
+      case 'LibraryBookDetails':
+        return <LibraryBookDetailsScreen {...navigationProps} />;
       
       case 'MyLibrary':
         return <MyLibraryScreen {...navigationProps} />;
       
       case 'MyLists':
         return <MyListsScreen {...navigationProps} />;
+      
+      case 'ListDetails': // ← NOVA SCREEN
+        return <ListDetailsScreen {...navigationProps} />;
       
       case 'ReadingBooks':
         return <ReadingBooksScreen {...navigationProps} />;

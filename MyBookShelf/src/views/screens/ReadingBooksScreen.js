@@ -1,4 +1,4 @@
-// src/views/screens/ReadingBooksScreen.js - Com navegação para BookProgress
+// src/views/screens/ReadingBooksScreen.js - CORRIGIDO
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -99,9 +99,16 @@ const ReadingBooksScreen = ({ navigation }) => {
   };
 
   const renderBookCard = ({ item }) => {
-    const progress = item.progress || 0;
+    // CORREÇÃO: Calcula o progresso real baseado nas páginas
     const currentPage = item.current_page || 0;
     const totalPages = item.pages || 0;
+    
+    // Se não tem páginas lidas ou total = 0, progresso = 0
+    // Senão, calcula baseado nas páginas (ignora item.progress)
+    const progress = (totalPages > 0 && currentPage > 0) 
+      ? Math.round((currentPage / totalPages) * 100) 
+      : 0;
+    
     const progressColor = getProgressColor(progress);
 
     return (
@@ -191,7 +198,7 @@ const ReadingBooksScreen = ({ navigation }) => {
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.navigate('Home')}
           >
             <Icon name="arrow-back" size={26} color="#2A5288" />
           </TouchableOpacity>
@@ -212,7 +219,7 @@ const ReadingBooksScreen = ({ navigation }) => {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Home')}
         >
           <Icon name="arrow-back" size={26} color="#2A5288" />
         </TouchableOpacity>

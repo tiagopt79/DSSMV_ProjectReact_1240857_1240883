@@ -1,4 +1,4 @@
-// src/views/screens/MyLibraryScreen.js - FUNCIONAL COMPLETO
+// src/views/screens/MyLibraryScreen.js - ATUALIZADO
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -18,7 +18,7 @@ const MyLibraryScreen = ({ navigation }) => {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState('all'); // all, reading, wishlist, read, unread
+  const [filter, setFilter] = useState('all');
 
   useEffect(() => {
     loadBooks();
@@ -29,9 +29,9 @@ const MyLibraryScreen = ({ navigation }) => {
       setLoading(true);
       const allBooks = await getBooks();
       setBooks(allBooks);
-      console.log(`📚 ${allBooks.length} livros carregados`);
+      console.log(`${allBooks.length} livros carregados`);
     } catch (error) {
-      console.error('❌ Erro ao carregar biblioteca:', error);
+      console.error('Erro ao carregar biblioteca:', error);
     } finally {
       setLoading(false);
     }
@@ -63,7 +63,7 @@ const MyLibraryScreen = ({ navigation }) => {
   const renderBookCard = ({ item }) => (
     <TouchableOpacity
       style={styles.bookCard}
-      onPress={() => navigation.navigate('BookDetails', { book: item })}
+      onPress={() => navigation.navigate('LibraryBookDetails', { book: item })}
       activeOpacity={0.9}
     >
       <View style={styles.coverContainer}>
@@ -88,7 +88,6 @@ const MyLibraryScreen = ({ navigation }) => {
           <Text style={styles.bookPages}>{item.pages} páginas</Text>
         )}
 
-        {/* Status Badge */}
         <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
           <Text style={styles.statusText}>
             {item.status === 'reading' ? '📖 Lendo' :
@@ -97,7 +96,6 @@ const MyLibraryScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        {/* Favorito */}
         {item.isFavorite && (
           <Icon 
             name="favorite" 
@@ -168,7 +166,6 @@ const MyLibraryScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
       
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -178,7 +175,6 @@ const MyLibraryScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Stats Card */}
       <View style={styles.statsCard}>
         <Text style={styles.statsTitle}>Minha Biblioteca</Text>
         <View style={styles.statsRow}>
@@ -192,7 +188,6 @@ const MyLibraryScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Filtros */}
       <View style={styles.filtersContainer}>
         <FilterButton
           label="Todos"
@@ -220,7 +215,6 @@ const MyLibraryScreen = ({ navigation }) => {
         />
       </View>
 
-      {/* Lista */}
       <FlatList
         data={filteredBooks}
         renderItem={renderBookCard}
@@ -241,7 +235,6 @@ const MyLibraryScreen = ({ navigation }) => {
   );
 };
 
-// Componente de Filtro
 const FilterButton = ({ label, count, active, onPress }) => (
   <TouchableOpacity
     style={[styles.filterButton, active && styles.filterButtonActive]}

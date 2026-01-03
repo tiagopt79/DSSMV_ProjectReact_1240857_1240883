@@ -1,4 +1,4 @@
-// src/views/screens/BookDetailsScreen.js - VERSÃO MELHORADA
+// src/views/screens/BookDetailsScreen.js - COM VALIDAÇÕES E RESET DE PROGRESSO
 
 import React, { useState, useEffect } from 'react';
 import { 
@@ -16,11 +16,18 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { addBook, getBookByIsbn, updateBook } from '../../services/restDbApi';
 
 const BookDetailsScreen = ({ route, navigation }) => {
-  const { book: initialBook } = route.params;
+  const { book: initialBook } = route.params || {};
+  
+  if (!initialBook) {
+    navigation.goBack();
+    return null;
+  }
+  
   const [book, setBook] = useState(initialBook);
   const [loading, setLoading] = useState(false);
   const [isInLibrary, setIsInLibrary] = useState(false);
   const [libraryBookId, setLibraryBookId] = useState(null);
+  const [libraryBookStatus, setLibraryBookStatus] = useState(null);
 
   useEffect(() => {
     checkIfInLibrary();
@@ -37,64 +44,147 @@ const BookDetailsScreen = ({ route, navigation }) => {
       if (existingBook) {
         setIsInLibrary(true);
         setLibraryBookId(existingBook._id);
+        setLibraryBookStatus(existingBook.status);
         setBook({ ...book, ...existingBook });
       } else {
         setIsInLibrary(false);
+        setLibraryBookStatus(null);
       }
     } catch (error) {
       console.error('Erro ao verificar biblioteca:', error);
     }
   };
 
+  const getStatusLabel = (status) => {
+    const statusLabels = {
+      'reading': 'A Ler',
+      'read': 'Lido',
+      'wishlist': 'Wishlist',
+      'toRead': 'Para Ler',
+    };
+    return statusLabels[status] || status;
+  };
+
   const addToLibrary = async (status, message, navigateTo) => {
     try {
-      setLoading(true);
-
-      const isbn = book.isbn || book.isbn_13?.[0] || book.key?.split('/').pop() || `temp_${Date.now()}`;
-
-      const bookData = {
-        isbn: isbn,
-        title: book.title || 'Sem título',
-        author: book.author || book.author_name?.[0] || 'Autor desconhecido',
-        cover: book.cover || book.coverUrl || 
-               (book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg` : ''),
-        description: book.description?.value || book.description || '',
-        publishYear: book.publish_year?.[0] || book.first_publish_year || '',
-        pages: book.number_of_pages_median || book.pages || 0,
-        rating: book.rating || 0,
-        status: status,
-        isFavorite: book.isFavorite || false,
-        current_page: 0,
-        progress: 0,
-        notes: '',
-        categories: Array.isArray(book.subject) ? book.subject.join(', ') : '',
-        language: book.language?.[0] || 'pt',
-        publisher: book.publisher?.[0] || '',
-      };
-
-      if (isInLibrary && libraryBookId) {
-        const updated = await updateBook(libraryBookId, { status });
-        setBook({ ...book, status });
-      } else {
-        const newBook = await addBook(bookData);
-        setIsInLibrary(true);
-        setLibraryBookId(newBook._id);
-        setBook({ ...book, ...newBook });
+      // VALIDAÇÃO: Verifica se já está na biblioteca com o mesmo status
+      if (isInLibrary && libraryBookStatus === status) {
+        Alert.alert(
+          'Livro já adicionado',
+          `Este livro já está em "${getStatusLabel(status)}"!`,
+          [{ text: 'OK' }]
+        );
+        return;
       }
 
-      Alert.alert('Sucesso!', message);
-      setLoading(false);
-
-      if (navigateTo) {
-        setTimeout(() => {
-          navigation.navigate(navigateTo);
-        }, 500);
+      // VALIDAÇÃO: Se já está na biblioteca com status diferente, pergunta se quer mudar
+      if (isInLibrary && libraryBookStatus !== status) {
+        Alert.alert(
+          'Livro já na biblioteca',
+          `Este livro já está em "${getStatusLabel(libraryBookStatus)}". Queres mover para "${getStatusLabel(status)}"?`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Sim, mover',
+              onPress: async () => {
+                await performUpdate(status, message, navigateTo);
+              },
+            },
+          ]
+        );
+        return;
       }
+
+      // Se não está na biblioteca, adiciona normalmente
+      await performAdd(status, message, navigateTo);
 
     } catch (error) {
       console.error('Erro ao adicionar:', error);
       Alert.alert('Erro', `Não foi possível adicionar o livro.\n\n${error.message}`);
       setLoading(false);
+    }
+  };
+
+  const performAdd = async (status, message, navigateTo) => {
+    setLoading(true);
+
+    const isbn = book.isbn || book.isbn_13?.[0] || book.key?.split('/').pop() || `temp_${Date.now()}`;
+
+    const bookData = {
+      isbn: isbn,
+      title: book.title || 'Sem título',
+      author: book.author || book.authors?.[0] || book.author_name?.[0] || 'Autor desconhecido',
+      cover: book.cover || book.coverUrl || book.thumbnail || '',
+      description: book.description?.value || book.description || '',
+      publishYear: book.publishedDate?.split('-')[0] || book.publishYear || '',
+      pages: book.pageCount || book.pages || book.number_of_pages_median || 0,
+      rating: book.rating || 0,
+      status: status,
+      isFavorite: book.isFavorite || false,
+      isWishlist: status === 'wishlist',
+      currentPage: 0,
+      current_page: 0,
+      progress: 0,
+      notes: '',
+      categories: Array.isArray(book.categories) ? book.categories.join(', ') : 
+                  Array.isArray(book.subject) ? book.subject.join(', ') : '',
+      language: Array.isArray(book.language) ? book.language[0] : book.language || 'pt',
+      publisher: Array.isArray(book.publisher) ? book.publisher[0] : book.publisher || '',
+    };
+
+    const newBook = await addBook(bookData);
+    setIsInLibrary(true);
+    setLibraryBookId(newBook._id);
+    setLibraryBookStatus(status);
+    setBook({ ...book, ...newBook });
+
+    Alert.alert('Sucesso!', message);
+    setLoading(false);
+
+    if (navigateTo) {
+      setTimeout(() => {
+        navigation.navigate(navigateTo);
+      }, 500);
+    }
+  };
+
+  const performUpdate = async (status, message, navigateTo) => {
+    setLoading(true);
+
+    // Prepara os campos a atualizar
+    const updates = {
+      status,
+      isWishlist: status === 'wishlist',
+    };
+
+    // Se estiver a mover para "reading" (A Ler), reseta o progresso
+    if (status === 'reading') {
+      updates.current_page = 0;
+      updates.currentPage = 0;
+      updates.progress = 0;
+    }
+
+    // Se estiver a marcar como "read" (Lido), completa o progresso
+    if (status === 'read') {
+      const totalPages = book.pages || book.pageCount || 0;
+      updates.current_page = totalPages;
+      updates.currentPage = totalPages;
+      updates.progress = 100;
+      updates.finished_date = new Date().toISOString();
+    }
+
+    const updated = await updateBook(libraryBookId, updates);
+    
+    setLibraryBookStatus(status);
+    setBook({ ...book, ...updates });
+
+    Alert.alert('Sucesso!', message);
+    setLoading(false);
+
+    if (navigateTo) {
+      setTimeout(() => {
+        navigation.navigate(navigateTo);
+      }, 500);
     }
   };
 
@@ -112,28 +202,30 @@ const BookDetailsScreen = ({ route, navigation }) => {
 
   const handleToggleFavorite = async () => {
     try {
-      
       if (!isInLibrary) {
+        // Se não está na biblioteca, adiciona como favorito
         const isbn = book.isbn || book.isbn_13?.[0] || book.key?.split('/').pop() || `temp_${Date.now()}`;
         
         const bookData = {
           isbn: isbn,
           title: book.title || 'Sem título',
-          author: book.author || book.author_name?.[0] || 'Autor desconhecido',
-          cover: book.cover || book.coverUrl || 
-                 (book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg` : ''),
+          author: book.author || book.authors?.[0] || book.author_name?.[0] || 'Autor desconhecido',
+          cover: book.cover || book.coverUrl || book.thumbnail || '',
           description: book.description?.value || book.description || '',
-          publishYear: book.publish_year?.[0] || book.first_publish_year || '',
-          pages: book.number_of_pages_median || book.pages || 0,
+          publishYear: book.publishedDate?.split('-')[0] || book.publishYear || '',
+          pages: book.pageCount || book.pages || book.number_of_pages_median || 0,
           rating: book.rating || 0,
           status: 'toRead',
           isFavorite: true,
+          isWishlist: false,
+          currentPage: 0,
           current_page: 0,
           progress: 0,
           notes: '',
-          categories: Array.isArray(book.subject) ? book.subject.join(', ') : '',
-          language: book.language?.[0] || 'pt',
-          publisher: book.publisher?.[0] || '',
+          categories: Array.isArray(book.categories) ? book.categories.join(', ') : 
+                      Array.isArray(book.subject) ? book.subject.join(', ') : '',
+          language: Array.isArray(book.language) ? book.language[0] : book.language || 'pt',
+          publisher: Array.isArray(book.publisher) ? book.publisher[0] : book.publisher || '',
         };
 
         setLoading(true);
@@ -141,11 +233,13 @@ const BookDetailsScreen = ({ route, navigation }) => {
         
         setIsInLibrary(true);
         setLibraryBookId(newBook._id);
+        setLibraryBookStatus('toRead');
         setBook({ ...book, isFavorite: true, ...newBook });
         Alert.alert('Sucesso!', 'Livro adicionado aos Favoritos!');
         setLoading(false);
 
       } else {
+        // Se já está na biblioteca, só toggle o favorito
         const newFavoriteStatus = !book.isFavorite;
         
         setLoading(true);
@@ -166,8 +260,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  const coverUrl = book.cover || book.coverUrl || 
-                   (book.cover_i ? `https://covers.openlibrary.org/b/id/${book.cover_i}-L.jpg` : null);
+  const coverUrl = book.cover || book.coverUrl || book.thumbnail || null;
 
   return (
     <View style={styles.container}>
@@ -184,12 +277,10 @@ const BookDetailsScreen = ({ route, navigation }) => {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* TÍTULO */}
         <Text style={styles.pageTitle}>Detalhes do Livro</Text>
 
         {/* CARD PRINCIPAL COM CAPA E INFO */}
         <View style={styles.mainCard}>
-          {/* CAPA */}
           <View style={styles.coverContainer}>
             {coverUrl ? (
               <Image source={{ uri: coverUrl }} style={styles.cover} />
@@ -200,15 +291,28 @@ const BookDetailsScreen = ({ route, navigation }) => {
             )}
           </View>
 
-          {/* INFORMAÇÕES */}
           <View style={styles.infoSection}>
-            <Text style={styles.title} numberOfLines={3}>{book.title || 'Sem título'}</Text>
+            <Text style={styles.title} numberOfLines={3}>
+              {book.title || 'Sem título'}
+            </Text>
             <Text style={styles.author}>
-              {book.author || book.author_name?.[0] || 'Autor desconhecido'}
+              {book.author || book.authors?.[0] || book.author_name?.[0] || 'Autor desconhecido'}
             </Text>
 
-            {book.number_of_pages_median && (
-              <Text style={styles.pages}>{book.number_of_pages_median} páginas</Text>
+            {(book.pageCount > 0 || book.pages > 0) && (
+              <Text style={styles.pages}>
+                {book.pageCount || book.pages} páginas
+              </Text>
+            )}
+
+            {/* Indicador se já está na biblioteca */}
+            {isInLibrary && (
+              <View style={styles.inLibraryBadge}>
+                <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
+                <Text style={styles.inLibraryText}>
+                  Na biblioteca: {getStatusLabel(libraryBookStatus)}
+                </Text>
+              </View>
             )}
           </View>
         </View>
@@ -272,7 +376,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
           )}
         </TouchableOpacity>
 
-        {/* SINOPSE - SEMPRE VISÍVEL */}
+        {/* SINOPSE */}
         <Text style={styles.sectionTitle}>Sinopse</Text>
         <View style={styles.synopsisCard}>
           <Text style={styles.synopsisText}>
@@ -282,41 +386,57 @@ const BookDetailsScreen = ({ route, navigation }) => {
 
         {/* INFORMAÇÕES ADICIONAIS */}
         <View style={styles.additionalInfo}>
-          {(book.publish_year?.[0] || book.first_publish_year) && (
+          {(book.publishedDate || book.publishYear) && (
             <View style={styles.infoRow}>
               <MaterialIcons name="calendar-today" size={18} color="#666" />
               <Text style={styles.infoText}>
-                Publicado em {book.publish_year?.[0] || book.first_publish_year}
+                Publicado em {book.publishedDate?.split('-')[0] || book.publishYear}
               </Text>
             </View>
           )}
 
-          {book.publisher?.[0] && (
+          {book.publisher && (
             <View style={styles.infoRow}>
               <MaterialIcons name="business" size={18} color="#666" />
-              <Text style={styles.infoText}>{book.publisher[0]}</Text>
+              <Text style={styles.infoText}>
+                {Array.isArray(book.publisher) ? book.publisher[0] : book.publisher}
+              </Text>
             </View>
           )}
 
-          {book.language?.[0] && (
+          {book.language && (
             <View style={styles.infoRow}>
               <MaterialIcons name="language" size={18} color="#666" />
               <Text style={styles.infoText}>
-                {book.language[0] === 'por' || book.language[0] === 'pt' ? 'Português' : 
-                 book.language[0] === 'eng' ? 'Inglês' : book.language[0]}
+                {book.language === 'pt' || book.language === 'por' ? 'Português' : 
+                 book.language === 'en' || book.language === 'eng' ? 'Inglês' : book.language}
               </Text>
             </View>
           )}
         </View>
 
         {/* CATEGORIAS */}
-        {book.subject && book.subject.length > 0 && (
+        {(Array.isArray(book.categories) && book.categories.length > 0) && (
           <View style={styles.categoriesCard}>
             <Text style={styles.categoriesTitle}>Categorias</Text>
             <View style={styles.categoriesContainer}>
-              {book.subject.slice(0, 6).map((cat, index) => (
+              {book.categories.slice(0, 6).map((cat, index) => (
                 <View key={index} style={styles.categoryChip}>
                   <Text style={styles.categoryText}>{cat}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+        
+        {/* CATEGORIAS (se vier como string) */}
+        {(typeof book.categories === 'string' && book.categories.length > 0) && (
+          <View style={styles.categoriesCard}>
+            <Text style={styles.categoriesTitle}>Categorias</Text>
+            <View style={styles.categoriesContainer}>
+              {book.categories.split(',').slice(0, 6).map((cat, index) => (
+                <View key={index} style={styles.categoryChip}>
+                  <Text style={styles.categoryText}>{cat.trim()}</Text>
                 </View>
               ))}
             </View>
@@ -414,6 +534,21 @@ const styles = StyleSheet.create({
   pages: {
     fontSize: 12,
     color: '#999999',
+    marginBottom: 8,
+  },
+  inLibraryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  inLibraryText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '600',
   },
   bigButton: {
     flexDirection: 'row',
