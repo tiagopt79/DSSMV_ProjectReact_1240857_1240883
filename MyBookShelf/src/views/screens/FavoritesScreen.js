@@ -1,0 +1,304 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  Alert,
+  ActivityIndicator,
+  RefreshControl,
+  StatusBar,
+} from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { getBooks, updateBook } from '../../services/restDbApi';
+
+const FavoritesScreen = ({ navigation }) => {
+  const [favorites, setFavorites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    loadFavorites();
+  }, []);
+
+  const loadFavorites = async () => {
+    try {
+      setLoading(true);
+      const allBooks = await getBooks();
+      const favoriteBooks = allBooks.filter(book => book.isFavorite === true);
+      setFavorites(favoriteBooks);
+      console.log(`${favoriteBooks.length} favoritos`);
+    } catch (error) {
+      console.error('Erro ao carregar favoritos:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadFavorites();
+    setRefreshing(false);
+  }, []);
+
+  const handleRemoveFavorite = (book) => {
+    Alert.alert(
+      'Remover dos Favoritos',
+      `Tens a certeza que queres remover "${book.title}" dos favoritos?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const updatedBook = {
+                ...book,
+                isFavorite: false,
+              };
+              await updateBook(book._id, updatedBook);
+              setFavorites(favorites.filter(b => b._id !== book._id));
+              Alert.alert('Sucesso', 'Livro removido dos favoritos');
+            } catch (error) {
+              console.error('Erro ao remover:', error);
+              Alert.alert('Erro', 'Não foi possível remover dos favoritos');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderBook = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.bookCard}
+      onPress={() => navigation.navigate('BookDetails', { book: item })}
+      activeOpacity={0.9}
+    >
+      <View style={styles.coverContainer}>
+        {item.cover ? (
+          <Image source={{ uri: item.cover }} style={styles.bookImage} />
+        ) : (
+          <View style={[styles.bookImage, styles.noCover]}>
+            <Icon name="book" size={35} color="#2A5288" />
+          </View>
+        )}
+      </View>
+      
+      <View style={styles.bookInfo}>
+        <Text style={styles.bookTitle} numberOfLines={2}>{item.title}</Text>
+        <Text style={styles.bookAuthor} numberOfLines={1}>
+          {item.author || 'Autor Desconhecido'}
+        </Text>
+        
+        <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
+          <Text style={styles.statusText}>
+            {item.status === 'reading' ? '📖 Lendo' :
+             item.status === 'wishlist' ? '💭 Wishlist' :
+             item.status === 'read' ? '✅ Lido' : '📚 Não Lido'}
+          </Text>
+        </View>
+
+        {item.pages > 0 && (
+          <View style={styles.pagesRow}>
+            <Icon name="menu-book" size={14} color="#999" />
+            <Text style={styles.pagesText}>{item.pages} páginas</Text>
+          </View>
+        )}
+      </View>
+      
+      <TouchableOpacity
+        style={styles.favoriteButton}
+        onPress={() => handleRemoveFavorite(item)}
+      >
+        <Icon name="favorite" size={28} color="#E91E63" />
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={26} color="#2A5288" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2A5288" />
+          <Text style={styles.loadingText}>Carregando favoritos...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (favorites.length === 0) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={26} color="#2A5288" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.statsCard}>
+          <Text style={styles.statsTitle}>Favoritos</Text>
+          <View style={styles.statsRow}>
+            <Icon name="favorite" size={38} color="#E91E63" />
+            <View style={styles.statsInfo}>
+              <Text style={styles.statsNumber}>0</Text>
+              <Text style={styles.statsLabel}>favoritos</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.emptyContainer}>
+          <Icon name="favorite-border" size={80} color="#AAAAAA" />
+          <Text style={styles.emptyTitle}>Nenhum Favorito</Text>
+          <Text style={styles.emptyText}>
+            Adiciona livros aos teus favoritos para os veres aqui!
+          </Text>
+          <TouchableOpacity
+            style={styles.emptyButton}
+            onPress={() => navigation.navigate('MyLibrary')}
+          >
+            <Icon name="library-books" size={22} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.emptyButtonText}>Ir para Biblioteca</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
+      
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Icon name="arrow-back" size={26} color="#2A5288" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.statsCard}>
+        <Text style={styles.statsTitle}>Favoritos</Text>
+        <View style={styles.statsRow}>
+          <Icon name="favorite" size={38} color="#E91E63" />
+          <View style={styles.statsInfo}>
+            <Text style={styles.statsNumber}>{favorites.length}</Text>
+            <Text style={styles.statsLabel}>
+              {favorites.length === 1 ? 'livro favorito' : 'livros favoritos'}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <FlatList
+        data={favorites}
+        renderItem={renderBook}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#2A5288']}
+            tintColor="#2A5288"
+          />
+        }
+      />
+    </View>
+  );
+};
+
+const favoriteStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#E8D5A8' },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { marginTop: 12, fontSize: 16, color: '#4A4A4A', fontWeight: '500' },
+  header: { paddingTop: 15, paddingBottom: 15, paddingHorizontal: 20 },
+  backButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+  },
+  statsCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginBottom: 15,
+    padding: 22,
+    borderRadius: 16,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  statsTitle: { fontSize: 24, fontWeight: 'bold', color: '#2A5288', marginBottom: 16 },
+  statsRow: { flexDirection: 'row', alignItems: 'center' },
+  statsInfo: { marginLeft: 16, flex: 1 },
+  statsNumber: { fontSize: 28, fontWeight: 'bold', color: '#000000', marginBottom: 2 },
+  statsLabel: { fontSize: 14, color: '#4A4A4A' },
+  listContainer: { paddingHorizontal: 20, paddingBottom: 30 },
+  bookCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  coverContainer: { marginRight: 16 },
+  bookImage: { width: 75, height: 110, borderRadius: 8, backgroundColor: '#E0E0E0' },
+  noCover: { justifyContent: 'center', alignItems: 'center' },
+  bookInfo: { flex: 1, justifyContent: 'center' },
+  bookTitle: { fontSize: 17, fontWeight: 'bold', color: '#2A5288', marginBottom: 6 },
+  bookAuthor: { fontSize: 14, color: '#666', marginBottom: 8 },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginBottom: 6,
+  },
+  status_reading: { backgroundColor: '#FFF4E6' },
+  status_wishlist: { backgroundColor: '#E6F3FF' },
+  status_read: { backgroundColor: '#E6F9F0' },
+  status_unread: { backgroundColor: '#F5F5F5' },
+  statusText: { fontSize: 11, fontWeight: '600' },
+  pagesRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  pagesText: { fontSize: 12, color: '#999' },
+  favoriteButton: { padding: 10, justifyContent: 'center' },
+  emptyContainer: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 30 },
+  emptyTitle: { fontSize: 22, fontWeight: 'bold', color: '#000', marginTop: 20, marginBottom: 12 },
+  emptyText: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 30, lineHeight: 22 },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2A5288',
+    paddingHorizontal: 28,
+    paddingVertical: 15,
+    borderRadius: 25,
+    elevation: 4,
+  },
+  emptyButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+});
+
+// Exportar com os estilos corretos
+const styles = favoriteStyles;
+export default FavoritesScreen;

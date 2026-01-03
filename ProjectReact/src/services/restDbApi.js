@@ -1,17 +1,24 @@
 // src/services/restDbApi.js
-import { RESTDB_CONFIG, RESTDB_HEADERS } from '../consts/config';
+// Configuração do RestDB.io
+const RESTDB_URL = 'https://SEU_DATABASE-xxxx.restdb.io/rest';
+const API_KEY = 'SUA_API_KEY_AQUI';
 
-const BASE_URL = RESTDB_CONFIG.DATABASE_URL;
+const headers = {
+  'Content-Type': 'application/json',
+  'x-apikey': API_KEY,
+  'cache-control': 'no-cache',
+};
 
 // ========== BOOKS ==========
 
-// Obter todos os livros
 export const getAllBooks = async () => {
   try {
-    const response = await fetch(`${BASE_URL}/books`, {
-      method: 'GET',
-      headers: RESTDB_HEADERS,
-    });
+    const response = await fetch(`${RESTDB_URL}/books`, { headers });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
     console.error('Error fetching books:', error);
@@ -19,13 +26,14 @@ export const getAllBooks = async () => {
   }
 };
 
-// Obter livro por ID
 export const getBookById = async (bookId) => {
   try {
-    const response = await fetch(`${BASE_URL}/books/${bookId}`, {
-      method: 'GET',
-      headers: RESTDB_HEADERS,
-    });
+    const response = await fetch(`${RESTDB_URL}/books/${bookId}`, { headers });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
     console.error('Error fetching book:', error);
@@ -33,14 +41,18 @@ export const getBookById = async (bookId) => {
   }
 };
 
-// Adicionar novo livro
 export const addBook = async (bookData) => {
   try {
-    const response = await fetch(`${BASE_URL}/books`, {
+    const response = await fetch(`${RESTDB_URL}/books`, {
       method: 'POST',
-      headers: RESTDB_HEADERS,
+      headers,
       body: JSON.stringify(bookData),
     });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
     console.error('Error adding book:', error);
@@ -48,14 +60,18 @@ export const addBook = async (bookData) => {
   }
 };
 
-// Atualizar livro
 export const updateBook = async (bookId, updates) => {
   try {
-    const response = await fetch(`${BASE_URL}/books/${bookId}`, {
+    const response = await fetch(`${RESTDB_URL}/books/${bookId}`, {
       method: 'PUT',
-      headers: RESTDB_HEADERS,
+      headers,
       body: JSON.stringify(updates),
     });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
     console.error('Error updating book:', error);
@@ -63,13 +79,17 @@ export const updateBook = async (bookId, updates) => {
   }
 };
 
-// Remover livro
 export const deleteBook = async (bookId) => {
   try {
-    const response = await fetch(`${BASE_URL}/books/${bookId}`, {
+    const response = await fetch(`${RESTDB_URL}/books/${bookId}`, {
       method: 'DELETE',
-      headers: RESTDB_HEADERS,
+      headers,
     });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
     console.error('Error deleting book:', error);
@@ -77,45 +97,16 @@ export const deleteBook = async (bookId) => {
   }
 };
 
-// Obter livros por status (reading, finished, wishlist)
-export const getBooksByStatus = async (status) => {
-  try {
-    const query = JSON.stringify({ status });
-    const response = await fetch(`${BASE_URL}/books?q=${query}`, {
-      method: 'GET',
-      headers: RESTDB_HEADERS,
-    });
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching books by status:', error);
-    throw error;
-  }
-};
-
-// Obter favoritos
-export const getFavoriteBooks = async () => {
-  try {
-    const query = JSON.stringify({ isFavorite: true });
-    const response = await fetch(`${BASE_URL}/books?q=${query}`, {
-      method: 'GET',
-      headers: RESTDB_HEADERS,
-    });
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching favorite books:', error);
-    throw error;
-  }
-};
-
 // ========== LISTS ==========
 
-// Obter todas as listas
 export const getAllLists = async () => {
   try {
-    const response = await fetch(`${BASE_URL}/lists`, {
-      method: 'GET',
-      headers: RESTDB_HEADERS,
-    });
+    const response = await fetch(`${RESTDB_URL}/lists`, { headers });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
     console.error('Error fetching lists:', error);
@@ -123,14 +114,18 @@ export const getAllLists = async () => {
   }
 };
 
-// Criar nova lista
 export const createList = async (listData) => {
   try {
-    const response = await fetch(`${BASE_URL}/lists`, {
+    const response = await fetch(`${RESTDB_URL}/lists`, {
       method: 'POST',
-      headers: RESTDB_HEADERS,
+      headers,
       body: JSON.stringify(listData),
     });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
     console.error('Error creating list:', error);
@@ -138,14 +133,18 @@ export const createList = async (listData) => {
   }
 };
 
-// Atualizar lista
 export const updateList = async (listId, updates) => {
   try {
-    const response = await fetch(`${BASE_URL}/lists/${listId}`, {
+    const response = await fetch(`${RESTDB_URL}/lists/${listId}`, {
       method: 'PUT',
-      headers: RESTDB_HEADERS,
+      headers,
       body: JSON.stringify(updates),
     });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
     console.error('Error updating list:', error);
@@ -153,13 +152,17 @@ export const updateList = async (listId, updates) => {
   }
 };
 
-// Remover lista
 export const deleteList = async (listId) => {
   try {
-    const response = await fetch(`${BASE_URL}/lists/${listId}`, {
+    const response = await fetch(`${RESTDB_URL}/lists/${listId}`, {
       method: 'DELETE',
-      headers: RESTDB_HEADERS,
+      headers,
     });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
     console.error('Error deleting list:', error);
@@ -169,32 +172,37 @@ export const deleteList = async (listId) => {
 
 // ========== READING SESSIONS ==========
 
-// Obter sessões de leitura de um livro
-export const getReadingSessions = async (bookId) => {
+export const addReadingSession = async (sessionData) => {
   try {
-    const query = JSON.stringify({ bookId });
-    const response = await fetch(`${BASE_URL}/reading_sessions?q=${query}`, {
-      method: 'GET',
-      headers: RESTDB_HEADERS,
+    const response = await fetch(`${RESTDB_URL}/reading-sessions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(sessionData),
     });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
-    console.error('Error fetching reading sessions:', error);
+    console.error('Error adding reading session:', error);
     throw error;
   }
 };
 
-// Adicionar sessão de leitura
-export const addReadingSession = async (sessionData) => {
+export const getReadingSessions = async (bookId) => {
   try {
-    const response = await fetch(`${BASE_URL}/reading_sessions`, {
-      method: 'POST',
-      headers: RESTDB_HEADERS,
-      body: JSON.stringify(sessionData),
-    });
+    const query = bookId ? `?q={"bookId":"${bookId}"}` : '';
+    const response = await fetch(`${RESTDB_URL}/reading-sessions${query}`, { headers });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
     return await response.json();
   } catch (error) {
-    console.error('Error adding reading session:', error);
+    console.error('Error fetching reading sessions:', error);
     throw error;
   }
 };

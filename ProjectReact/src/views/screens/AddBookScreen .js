@@ -3,335 +3,329 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   TouchableOpacity,
-  Modal,
   ScrollView,
-  Image,
-  TextInput,
   ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useDispatch } from 'react-redux';
-import { addBook } from '../../flux/actions';
-import { searchBooksByTitle } from '../../flux/actions';
+import { addBookFromISBN, searchBookByISBN } from '../../flux/actions';
+import colors from '../../theme/colors';
 
 const AddBookScreen = ({ navigation }) => {
   const dispatch = useDispatch();
-  const [modalVisible, setModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  
+  const [isbn, setIsbn] = useState('');
   const [loading, setLoading] = useState(false);
+  const [bookPreview, setBookPreview] = useState(null);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    
+  // Buscar livro por ISBN
+  const handleSearchISBN = async () => {
+    if (!isbn.trim()) {
+      Alert.alert('Erro', 'Por favor, insira um ISBN válido');
+      return;
+    }
+
     setLoading(true);
     try {
-      const results = await searchBooksByTitle(searchQuery);
-      setSearchResults(results);
+      const book = await searchBookByISBN(isbn);
+      setBookPreview(book);
     } catch (error) {
-      console.error('Error searching books:', error);
+      Alert.alert('Erro', 'Livro não encontrado. Verifique o ISBN.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const handleAddBook = async (bookInfo) => {
+  // Adicionar livro à biblioteca
+  const handleAddBook = async () => {
+    if (!bookPreview) return;
+
+    setLoading(true);
     try {
-      const bookData = {
-        isbn: bookInfo.isbn,
-        title: bookInfo.title,
-        author: bookInfo.author,
-        cover: bookInfo.cover,
-        pages: bookInfo.pages || 0,
-        currentPage: 0,
-        status: 'wishlist',
-        isFavorite: false,
-        publisher: bookInfo.publisher,
-        publishYear: bookInfo.publishYear,
-      };
-      
-      await dispatch(addBook(bookData));
-      setModalVisible(false);
-      navigation.goBack();
+      await dispatch(addBookFromISBN(isbn));
+      Alert.alert(
+        'Sucesso! 🎉',
+        'Livro adicionado à sua biblioteca',
+        [
+          {
+            text: 'Ver Biblioteca',
+            onPress: () => navigation.navigate('MyLibrary'),
+          },
+          {
+            text: 'Adicionar Outro',
+            onPress: () => {
+              setIsbn('');
+              setBookPreview(null);
+            },
+          },
+        ]
+      );
     } catch (error) {
-      console.error('Error adding book:', error);
-      alert('Erro ao adicionar livro. Tente novamente.');
+      Alert.alert('Erro', 'Não foi possível adicionar o livro');
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const openBarcodeScanner = () => {
-    // Aqui vais integrar a câmara para scan de ISBN
-    // Por agora, vou deixar um placeholder
-    alert('Funcionalidade de scan de código de barras será implementada');
-    // navigation.navigate('BarcodeScanner');
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Content */}
-      <View style={styles.content}>
-        <Text style={styles.title}>Adicionar um livro</Text>
-
-        <TouchableOpacity
-          style={styles.optionCard}
-          onPress={() => setModalVisible(true)}
-        >
-          <Text style={styles.optionIcon}>🔍</Text>
-          <Text style={styles.optionTitle}>Por pesquisa</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.optionCard}
-          onPress={openBarcodeScanner}
-        >
-          <Text style={styles.optionIcon}>📷</Text>
-          <Text style={styles.optionTitle}>Por código de barras</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity onPress={() => navigation.navigate('Home')}>
-          <Text style={styles.navIcon}>🏠</Text>
-          <Text style={styles.navLabel}>Home</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Search Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Pesquisar Livro</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <Text style={styles.closeButton}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.searchContainer}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Digite o título ou autor"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onSubmitEditing={handleSearch}
-              />
-              <TouchableOpacity
-                style={styles.searchButton}
-                onPress={handleSearch}
-              >
-                <Text style={styles.searchButtonText}>Buscar</Text>
-              </TouchableOpacity>
-            </View>
-
-            {loading ? (
-              <ActivityIndicator size="large" color="#254E70" />
-            ) : (
-              <ScrollView style={styles.resultsContainer}>
-                {searchResults.map((book, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.resultItem}
-                    onPress={() => handleAddBook(book)}
-                  >
-                    {book.cover && (
-                      <Image
-                        source={{ uri: book.cover }}
-                        style={styles.resultCover}
-                      />
-                    )}
-                    <View style={styles.resultInfo}>
-                      <Text style={styles.resultTitle}>{book.title}</Text>
-                      <Text style={styles.resultAuthor}>{book.author}</Text>
-                      {book.pages > 0 && (
-                        <Text style={styles.resultPages}>
-                          {book.pages} páginas
-                        </Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-          </View>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Adicionar Livro</Text>
+          <Text style={styles.subtitle}>
+            Digite o ISBN do livro para adicionar à sua biblioteca
+          </Text>
         </View>
-      </Modal>
-    </View>
+
+        {/* Input ISBN */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="ISBN (ex: 9780123456789)"
+            value={isbn}
+            onChangeText={setIsbn}
+            keyboardType="numeric"
+            maxLength={13}
+          />
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={handleSearchISBN}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.searchButtonText}>🔍 Buscar</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Preview do Livro */}
+        {bookPreview && (
+          <View style={styles.previewContainer}>
+            <Text style={styles.previewTitle}>Preview:</Text>
+            
+            <View style={styles.previewCard}>
+              {bookPreview.coverUrl && (
+                <Image
+                  source={{ uri: bookPreview.coverUrl }}
+                  style={styles.previewCover}
+                  resizeMode="cover"
+                />
+              )}
+              
+              <View style={styles.previewInfo}>
+                <Text style={styles.previewBookTitle} numberOfLines={2}>
+                  {bookPreview.title}
+                </Text>
+                <Text style={styles.previewAuthor}>{bookPreview.author}</Text>
+                
+                {bookPreview.publishYear && (
+                  <Text style={styles.previewDetail}>
+                    Ano: {bookPreview.publishYear}
+                  </Text>
+                )}
+                
+                {bookPreview.pages && (
+                  <Text style={styles.previewDetail}>
+                    Páginas: {bookPreview.pages}
+                  </Text>
+                )}
+
+                {bookPreview.publisher && (
+                  <Text style={styles.previewDetail}>
+                    Editora: {bookPreview.publisher}
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            {/* Botão Adicionar */}
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={handleAddBook}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.addButtonText}>
+                  ➕ Adicionar à Biblioteca
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Dica */}
+        <View style={styles.tipContainer}>
+          <Text style={styles.tipTitle}>💡 Dica:</Text>
+          <Text style={styles.tipText}>
+            O ISBN geralmente está na parte de trás do livro, perto do código de barras.
+            Pode ter 10 ou 13 dígitos.
+          </Text>
+        </View>
+
+        {/* Botão alternativo para busca manual */}
+        <TouchableOpacity
+          style={styles.manualButton}
+          onPress={() => navigation.navigate('Search')}
+        >
+          <Text style={styles.manualButtonText}>
+            🔍 Ou buscar por título
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#254E70',
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    padding: 20,
   },
   header: {
-    padding: 20,
-    paddingTop: 20,
-  },
-  backButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backIcon: {
-    fontSize: 24,
-    color: '#254E70',
-  },
-  content: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    padding: 30,
+    marginBottom: 24,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#254E70',
-    marginBottom: 30,
+    color: colors.text,
+    marginBottom: 8,
   },
-  optionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    padding: 30,
-    marginBottom: 20,
-    alignItems: 'center',
-    elevation: 3,
+  subtitle: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    marginBottom: 24,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    fontSize: 16,
+    marginRight: 12,
+    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  optionIcon: {
-    fontSize: 50,
-    marginBottom: 15,
-  },
-  optionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#E8F4F8',
-    paddingVertical: 15,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-  },
-  navIcon: {
-    fontSize: 24,
-    textAlign: 'center',
-  },
-  navLabel: {
-    fontSize: 12,
-    color: '#254E70',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    width: '90%',
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#254E70',
-  },
-  closeButton: {
-    fontSize: 24,
-    color: '#999',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  searchInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
-    padding: 12,
-    marginRight: 10,
-  },
   searchButton: {
-    backgroundColor: '#254E70',
-    borderRadius: 10,
+    backgroundColor: colors.primary,
     paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
     justifyContent: 'center',
+    elevation: 2,
   },
   searchButtonText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  resultsContainer: {
-    maxHeight: 400,
-  },
-  resultItem: {
-    flexDirection: 'row',
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-  },
-  resultCover: {
-    width: 60,
-    height: 90,
-    borderRadius: 5,
-    marginRight: 15,
-  },
-  resultInfo: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  resultTitle: {
+    color: '#FFF',
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    fontWeight: '600',
   },
-  resultAuthor: {
+  previewContainer: {
+    marginBottom: 24,
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  previewCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  previewCover: {
+    width: 80,
+    height: 120,
+    borderRadius: 8,
+    marginRight: 16,
+  },
+  previewInfo: {
+    flex: 1,
+  },
+  previewBookTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  previewAuthor: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    marginBottom: 8,
+  },
+  previewDetail: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 3,
+    color: colors.textSecondary,
+    marginBottom: 4,
   },
-  resultPages: {
-    fontSize: 12,
-    color: '#999',
+  addButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    elevation: 2,
+  },
+  addButtonText: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  tipContainer: {
+    backgroundColor: '#FFF9E6',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  tipTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  tipText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+  },
+  manualButton: {
+    backgroundColor: '#FFF',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  manualButtonText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 
