@@ -1,13 +1,10 @@
-// src/flux/actions/index.js
 import * as types from '../types';
 import * as RestDB from '../../services/restDbApi';
-import * as OpenLibrary from '../../services/openLibraryApi';
-
-// ========== BOOKS ACTIONS ==========
+import * as GoogleBooks from '../../services/googleBooksApi';
 
 export const fetchBooks = () => async (dispatch) => {
   try {
-    const books = await RestDB.getAllBooks();
+    const books = await RestDB.getBooks();
     dispatch({ type: types.SET_BOOKS, payload: books });
   } catch (error) {
     console.error('Error fetching books:', error);
@@ -16,10 +13,8 @@ export const fetchBooks = () => async (dispatch) => {
 
 export const addBookFromISBN = (isbn) => async (dispatch) => {
   try {
-    // 1. Buscar info do livro na Open Library
-    const bookInfo = await OpenLibrary.searchByISBN(isbn);
+    const bookInfo = await GoogleBooks.searchByISBN(isbn);
     
-    // 2. Adicionar ao RestDB
     const newBook = await RestDB.addBook({
       ...bookInfo,
       status: 'wishlist',
@@ -88,7 +83,6 @@ export const updateReadingProgress = (bookId, currentPage, totalPages, notes = '
     await RestDB.updateBook(bookId, updates);
     dispatch({ type: types.UPDATE_BOOK, payload: { bookId, updates } });
     
-    // Adicionar sessão de leitura
     const session = {
       bookId,
       date: new Date().toISOString(),
@@ -102,11 +96,10 @@ export const updateReadingProgress = (bookId, currentPage, totalPages, notes = '
   }
 };
 
-// ========== LISTS ACTIONS ==========
 
 export const fetchLists = () => async (dispatch) => {
   try {
-    const lists = await RestDB.getAllLists();
+    const lists = await RestDB.getLists();
     dispatch({ type: 'SET_LISTS', payload: lists });
   } catch (error) {
     console.error('Error fetching lists:', error);
@@ -152,22 +145,39 @@ export const addBookToList = (listId, bookId) => async (dispatch, getState) => {
   }
 };
 
-// ========== SEARCH ACTIONS ==========
 
 export const searchBooksByTitle = async (title) => {
   try {
-    return await OpenLibrary.searchByTitle(title);
+    return await GoogleBooks.searchByTitle(title);
   } catch (error) {
     console.error('Error searching books:', error);
     return [];
   }
 };
 
+export const searchBooksByAuthor = async (author) => {
+  try {
+    return await GoogleBooks.searchByAuthor(author);
+  } catch (error) {
+    console.error('Error searching by author:', error);
+    return [];
+  }
+};
+
 export const searchBookByISBN = async (isbn) => {
   try {
-    return await OpenLibrary.searchByISBN(isbn);
+    return await GoogleBooks.searchByISBN(isbn);
   } catch (error) {
     console.error('Error searching by ISBN:', error);
+    throw error;
+  }
+};
+
+export const getBookDetails = async (bookId) => {
+  try {
+    return await GoogleBooks.getBookDetails(bookId);
+  } catch (error) {
+    console.error('Error getting book details:', error);
     throw error;
   }
 };

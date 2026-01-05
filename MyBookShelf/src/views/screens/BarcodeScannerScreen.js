@@ -17,7 +17,6 @@ const BarcodeScannerScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const webViewRef = useRef(null);
 
-  // HTML com acesso à câmara e leitor de códigos de barras
   const cameraHTML = `
     <!DOCTYPE html>
     <html>

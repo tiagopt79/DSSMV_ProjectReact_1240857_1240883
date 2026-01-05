@@ -1,4 +1,3 @@
-// src/views/components/BookCard.js
 import React from 'react';
 import { 
   View, 
@@ -9,7 +8,7 @@ import {
 } from 'react-native';
 import colors from '../../theme/colors';
 
-const BookCard = ({ book, onPress }) => {
+const BookCard = ({ book, onPress, hideStatus = false }) => {
   return (
     <TouchableOpacity 
       style={styles.card} 
@@ -47,7 +46,8 @@ const BookCard = ({ book, onPress }) => {
           <Text style={styles.pages}>{book.pages} páginas</Text>
         )}
         
-        {book.status && (
+        {}
+        {!hideStatus && book.status && (
           <View style={[styles.statusBadge, styles[`status_${book.status}`]]}>
             <Text style={styles.statusText}>
               {getStatusLabel(book.status)}

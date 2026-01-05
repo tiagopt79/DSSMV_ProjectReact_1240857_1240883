@@ -9,10 +9,11 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import AddBookModal from '../components/AddBookModal';
-import { getListById, getBooksFromList, removeBookFromList } from '../../services/restDbApi';
+import { getListById, getBooksFromList, removeBookFromList, deleteList } from '../../services/restDbApi';
 
 const ListDetailsScreen = ({ route, navigation }) => {
   const { listId, listName, listColor, listIcon, onGoBack } = route.params;
@@ -31,18 +32,63 @@ const ListDetailsScreen = ({ route, navigation }) => {
     try {
       setLoading(true);
       
-      const listData = await getListById(listId);
-      setList(listData);
+      console.log('\n📋 CARREGANDO DETALHES DA LISTA');
+      console.log('listId:', listId);
+      console.log('listName:', listName);
+      
+      let listData = null;
+      try {
+        listData = await getListById(listId);
+        setList(listData);
+        console.log('✅ Lista carregada:', listData);
+      } catch (listError) {
+        console.error('❌ Erro ao buscar lista:', listError.message);
+        listData = {
+          _id: listId,
+          name: listName,
+          color: listColor,
+          icon: listIcon,
+          bookIds: [],
+          bookCount: 0,
+        };
+        setList(listData);
+        Alert.alert(
+          'Aviso',
+          'A lista pode estar com problemas. Mostrando dados básicos.',
+          [{ text: 'OK' }]
+        );
+      }
 
-      if (listData.bookIds && listData.bookIds.length > 0) {
-        const booksData = await getBooksFromList(listId);
-        setBooks(booksData);
+      if (listData && listData.bookIds && listData.bookIds.length > 0) {
+        try {
+          console.log(`📚 Buscando ${listData.bookIds.length} livros...`);
+          const booksData = await getBooksFromList(listId);
+          setBooks(booksData);
+          console.log(`✅ ${booksData.length} livros carregados`);
+        } catch (booksError) {
+          console.error('❌ Erro ao buscar livros:', booksError.message);
+          setBooks([]);
+          Alert.alert(
+            'Aviso',
+            'Não foi possível carregar os livros da lista. A lista pode conter livros que foram apagados.',
+            [{ text: 'OK' }]
+          );
+        }
       } else {
+        console.log('🔭 Lista vazia');
         setBooks([]);
       }
+      
     } catch (error) {
-      console.error('Erro ao carregar lista:', error);
-      Alert.alert('Erro', 'Não foi possível carregar os detalhes da lista');
+      console.error('❌ Erro geral:', error);
+      Alert.alert(
+        'Erro',
+        'Não foi possível carregar os detalhes da lista. Tente novamente.',
+        [
+          { text: 'Voltar', onPress: () => navigation.goBack() },
+          { text: 'Tentar novamente', onPress: () => loadListDetails() }
+        ]
+      );
     } finally {
       setLoading(false);
     }
@@ -53,6 +99,42 @@ const ListDetailsScreen = ({ route, navigation }) => {
     await loadListDetails();
     setRefreshing(false);
   }, [listId]);
+
+  const handleDeleteList = () => {
+    Alert.alert(
+      'Apagar Lista',
+      `Tens certeza que desejas apagar a lista "${listName}"? Todos os livros serão removidos desta lista.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Apagar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteList(listId);
+              
+              Alert.alert(
+                'Lista Apagada',
+                `A lista "${listName}" foi apagada com sucesso.`,
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      if (onGoBack) onGoBack();
+                      navigation.goBack();
+                    }
+                  }
+                ]
+              );
+            } catch (error) {
+              console.error('Erro ao apagar lista:', error);
+              Alert.alert('Erro', 'Não foi possível apagar a lista.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleRemoveBook = async (bookId, bookTitle) => {
     Alert.alert(
@@ -111,6 +193,7 @@ const ListDetailsScreen = ({ route, navigation }) => {
     navigation.navigate('LibraryBookDetails', {
       book: book,
       fromList: true,
+      isNewBook: false,
       listId: listId,
       listName: listName,
       listColor: listColor,
@@ -154,64 +237,65 @@ const ListDetailsScreen = ({ route, navigation }) => {
       <Text style={styles.emptyText}>
         Adiciona livros à tua lista para começar
       </Text>
-      <TouchableOpacity
-        style={[styles.addButton, { backgroundColor: listColor }]}
-        onPress={handleAddBooks}
-      >
-        <Icon name="add" size={20} color="#FFFFFF" />
-        <Text style={styles.addButtonText}>Adicionar livros</Text>
-      </TouchableOpacity>
     </View>
   );
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+        <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
         <ActivityIndicator size="large" color={listColor} />
+        <Text style={styles.loadingText}>Carregando...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
+      
+      {}
       <View style={styles.header}>
         <TouchableOpacity
-          style={styles.backButton}
+          style={styles.headerButton}
           onPress={() => {
             if (onGoBack) onGoBack();
             navigation.goBack();
           }}
         >
-          <Icon name="arrow-back" size={24} color="#2A5288" />
+          <Icon name="arrow-back" size={26} color="#2C3E50" />
         </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={handleDeleteList}
+        >
+          <Icon name="delete" size={26} color="#E74C3C" />
+        </TouchableOpacity>
+      </View>
 
-        <View style={styles.headerCenter}>
-          <View style={[styles.iconBadge, { backgroundColor: listColor + '20' }]}>
-            <Icon name={listIcon} size={20} color={listColor} />
+      {}
+      <View style={styles.listBanner}>
+        <View style={styles.listBannerTop}>
+          <View style={[styles.iconContainer, { backgroundColor: listColor }]}>
+            <Icon name={listIcon} size={32} color="#FFFFFF" />
           </View>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
+          <View style={styles.listTitleContainer}>
+            <Text style={styles.listTitle} numberOfLines={2}>
               {listName}
             </Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={styles.bookCountBadge}>
               {books.length} {books.length === 1 ? 'livro' : 'livros'}
             </Text>
           </View>
         </View>
-
-        <TouchableOpacity
-          style={styles.addHeaderButton}
-          onPress={handleAddBooks}
-        >
-          <Icon name="add" size={24} color="#2A5288" />
-        </TouchableOpacity>
+        
+        {list?.description && (
+          <Text style={styles.listDescriptionBanner} numberOfLines={2}>
+            {list.description}
+          </Text>
+        )}
       </View>
-
-      {list?.description && (
-        <View style={styles.descriptionContainer}>
-          <Text style={styles.descriptionText}>{list.description}</Text>
-        </View>
-      )}
 
       <FlatList
         data={books}
@@ -231,6 +315,15 @@ const ListDetailsScreen = ({ route, navigation }) => {
         }
         showsVerticalScrollIndicator={false}
       />
+
+      {}
+      <TouchableOpacity
+        style={[styles.floatingButton, { backgroundColor: listColor }]}
+        onPress={handleAddBooks}
+        activeOpacity={0.8}
+      >
+        <Icon name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
 
       <AddBookModal
         visible={showAddModal}
@@ -253,78 +346,91 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#E8D5A8',
   },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+  },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 15,
-    backgroundColor: '#F5E6C8',
-    borderBottomWidth: 1,
-    borderBottomColor: '#D4C3A3',
+    paddingVertical: 15,
+    backgroundColor: '#E8D5A8',
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  headerButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
-  headerCenter: {
-    flex: 1,
+  headerSpace: {
+    width: 48,
+    height: 48,
+    display: 'none',
+  },
+  listBanner: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 20,
+    padding: 20,
+    borderRadius: 20,
+    elevation: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  listBannerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 12,
+    marginBottom: 8,
   },
-  iconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
+    elevation: 3,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
-  headerTextContainer: {
+  listTitleContainer: {
     flex: 1,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+  listTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#2A5288',
-    marginBottom: 2,
+    marginBottom: 6,
+    lineHeight: 30,
   },
-  headerSubtitle: {
-    fontSize: 13,
+  bookCountBadge: {
+    fontSize: 14,
+    fontWeight: '600',
     color: '#8B7355',
   },
-  addHeaderButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  descriptionContainer: {
-    backgroundColor: '#F5E6C8',
-    marginHorizontal: 20,
-    marginTop: 16,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#D4C3A3',
-  },
-  descriptionText: {
+  listDescriptionBanner: {
     fontSize: 14,
     color: '#8B7355',
     lineHeight: 20,
+    marginTop: 4,
   },
   listContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 30,
+    paddingHorizontal: 16,
+    paddingBottom: 100,
   },
   emptyListContent: {
     flexGrow: 1,
@@ -336,8 +442,11 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 10,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D4C3A3',
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   bookCover: {
     width: 60,
@@ -398,18 +507,20 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     lineHeight: 20,
   },
-  addButton: {
-    flexDirection: 'row',
+  floatingButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 24,
-    gap: 8,
-  },
-  addButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    elevation: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
 });
 

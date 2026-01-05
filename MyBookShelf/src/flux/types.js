@@ -1,4 +1,4 @@
-// ========== BOOKS ==========
+
 export const SET_BOOKS = 'SET_BOOKS';
 export const SET_SEARCH_RESULTS = 'SET_SEARCH_RESULTS';
 export const ADD_BOOK = 'ADD_BOOK';
@@ -8,7 +8,6 @@ export const TOGGLE_FAVORITE = 'TOGGLE_FAVORITE';
 export const SET_LOADING = 'SET_LOADING';
 export const SET_ERROR = 'SET_ERROR';
 
-// ========== LISTS ==========
 export const SET_LISTS = 'SET_LISTS';
 export const CREATE_LIST = 'CREATE_LIST';
 export const DELETE_LIST = 'DELETE_LIST';
@@ -16,7 +15,7 @@ export const UPDATE_LIST = 'UPDATE_LIST';
 export const ADD_BOOK_TO_LIST = 'ADD_BOOK_TO_LIST';
 export const REMOVE_BOOK_FROM_LIST = 'REMOVE_BOOK_FROM_LIST';
 
-// ========== READING PROGRESS ==========
+
 export const SET_READING_SESSIONS = 'SET_READING_SESSIONS';
 export const ADD_READING_SESSION = 'ADD_READING_SESSION';
 export const UPDATE_READING_PROGRESS = 'UPDATE_READING_PROGRESS';

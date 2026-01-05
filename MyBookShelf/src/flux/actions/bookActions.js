@@ -1,16 +1,12 @@
-// src/flux/actions/bookActions.js
 import * as types from '../types';
-import * as OpenLibrary from '../../services/openLibraryApi';
+import * as GoogleBooks from '../../services/googleBooksApi';
 
-/**
- * Action para buscar livros por título na Open Library
- * Esta é a action que o SearchScreen precisa
- */
+
 export const searchBooks = (query) => async (dispatch) => {
   try {
     dispatch({ type: types.SET_LOADING, payload: true });
     
-    const results = await OpenLibrary.searchByTitle(query);
+    const results = await GoogleBooks.searchByTitle(query);
     
     dispatch({ 
       type: types.SET_SEARCH_RESULTS, 
@@ -28,14 +24,12 @@ export const searchBooks = (query) => async (dispatch) => {
   }
 };
 
-/**
- * Busca livro por ISBN
- */
+
 export const searchBookByISBN = (isbn) => async (dispatch) => {
   try {
     dispatch({ type: types.SET_LOADING, payload: true });
     
-    const book = await OpenLibrary.searchByISBN(isbn);
+    const book = await GoogleBooks.searchByISBN(isbn);
     
     dispatch({ type: types.SET_LOADING, payload: false });
     
@@ -50,14 +44,12 @@ export const searchBookByISBN = (isbn) => async (dispatch) => {
   }
 };
 
-/**
- * Busca livros por assunto/categoria
- */
-export const searchBooksBySubject = (subject) => async (dispatch) => {
+
+export const searchBooksByAuthor = (author) => async (dispatch) => {
   try {
     dispatch({ type: types.SET_LOADING, payload: true });
     
-    const results = await OpenLibrary.searchBySubject(subject);
+    const results = await GoogleBooks.searchByAuthor(author);
     
     dispatch({ 
       type: types.SET_SEARCH_RESULTS, 
@@ -66,7 +58,7 @@ export const searchBooksBySubject = (subject) => async (dispatch) => {
     
     return results;
   } catch (error) {
-    console.error('Error searching by subject:', error);
+    console.error('Error searching by author:', error);
     dispatch({ 
       type: types.SET_ERROR, 
       payload: error.message 
@@ -75,9 +67,27 @@ export const searchBooksBySubject = (subject) => async (dispatch) => {
   }
 };
 
-/**
- * Limpa os resultados de busca
- */
+
+export const getBookDetails = (bookId) => async (dispatch) => {
+  try {
+    dispatch({ type: types.SET_LOADING, payload: true });
+    
+    const book = await GoogleBooks.getBookDetails(bookId);
+    
+    dispatch({ type: types.SET_LOADING, payload: false });
+    
+    return book;
+  } catch (error) {
+    console.error('Error getting book details:', error);
+    dispatch({ 
+      type: types.SET_ERROR, 
+      payload: error.message 
+    });
+    throw error;
+  }
+};
+
+
 export const clearSearchResults = () => (dispatch) => {
   dispatch({ 
     type: types.SET_SEARCH_RESULTS, 

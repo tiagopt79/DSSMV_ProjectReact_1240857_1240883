@@ -93,7 +93,7 @@ const WishListScreen = ({ navigation }) => {
 
   const renderBook = ({ item }) => (
     <View style={wishlistStyles.bookCard}>
-      {/* Removido TouchableOpacity - não navega mais */}
+      {}
       <View style={wishlistStyles.bookContent}>
         <View style={wishlistStyles.coverContainer}>
           {item.cover ? (

@@ -1,4 +1,4 @@
-// src/views/screens/MyLibraryScreen.js - ATUALIZADO
+// src/views/screens/MyLibraryScreen.js - COM FILTRO "PARA LER"
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -45,6 +45,10 @@ const MyLibraryScreen = ({ navigation }) => {
 
   const getFilteredBooks = () => {
     if (filter === 'all') return books;
+    // Para o filtro "toRead", aceita tanto 'toRead' quanto 'unread'
+    if (filter === 'toRead') {
+      return books.filter(book => book.status === 'toRead' || book.status === 'unread');
+    }
     return books.filter(book => book.status === filter);
   };
 
@@ -53,9 +57,9 @@ const MyLibraryScreen = ({ navigation }) => {
   const getCounts = () => ({
     all: books.length,
     reading: books.filter(b => b.status === 'reading').length,
+    toRead: books.filter(b => b.status === 'toRead' || b.status === 'unread').length,
     wishlist: books.filter(b => b.status === 'wishlist').length,
     read: books.filter(b => b.status === 'read').length,
-    unread: books.filter(b => b.status === 'unread').length,
   });
 
   const counts = getCounts();
@@ -90,9 +94,10 @@ const MyLibraryScreen = ({ navigation }) => {
 
         <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
           <Text style={styles.statusText}>
-            {item.status === 'reading' ? '📖 Lendo' :
+            {item.status === 'reading' ? '📖 A Ler' :
+             item.status === 'toRead' || item.status === 'unread' ? '📚 Para Ler' :
              item.status === 'wishlist' ? '💭 Wishlist' :
-             item.status === 'read' ? '✅ Lido' : '📚 Não Lido'}
+             item.status === 'read' ? '✅ Lido' : '📚 Para Ler'}
           </Text>
         </View>
 
@@ -135,9 +140,9 @@ const MyLibraryScreen = ({ navigation }) => {
   const getFilterLabel = () => {
     const labels = {
       reading: 'a ler',
+      toRead: 'para ler',
       wishlist: 'na wishlist',
       read: 'lido',
-      unread: 'não lido',
     };
     return labels[filter] || '';
   };
@@ -196,10 +201,16 @@ const MyLibraryScreen = ({ navigation }) => {
           onPress={() => setFilter('all')}
         />
         <FilterButton
-          label="Lendo"
+          label="A Ler"
           count={counts.reading}
           active={filter === 'reading'}
           onPress={() => setFilter('reading')}
+        />
+        <FilterButton
+          label="Para Ler"
+          count={counts.toRead}
+          active={filter === 'toRead'}
+          onPress={() => setFilter('toRead')}
         />
         <FilterButton
           label="Wishlist"
@@ -335,9 +346,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   status_reading: { backgroundColor: '#FFF4E6' },
+  status_toRead: { backgroundColor: '#E8EAF6' },
+  status_unread: { backgroundColor: '#E8EAF6' },
   status_wishlist: { backgroundColor: '#E6F3FF' },
   status_read: { backgroundColor: '#E6F9F0' },
-  status_unread: { backgroundColor: '#F5F5F5' },
   statusText: { fontSize: 11, fontWeight: '600' },
   favoriteIcon: { position: 'absolute', top: 5, right: 5 },
   emptyContainer: { alignItems: 'center', paddingVertical: 80, paddingHorizontal: 30 },

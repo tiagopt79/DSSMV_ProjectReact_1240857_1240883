@@ -5,10 +5,10 @@ const WideButton = ({ title, icon, onPress }) => {
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.content}>
-        {/* Ícone à esquerda */}
+        {}
         <Text style={styles.iconText}>{icon}</Text>
         
-        {/* Título */}
+        {}
         <Text style={styles.title}>{title}</Text>
       </View>
     </TouchableOpacity>

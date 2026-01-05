@@ -1,5 +1,3 @@
-// src/views/screens/BookDetailsScreen.js - COM VALIDAÇÕES E RESET DE PROGRESSO
-
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -61,13 +59,13 @@ const BookDetailsScreen = ({ route, navigation }) => {
       'read': 'Lido',
       'wishlist': 'Wishlist',
       'toRead': 'Para Ler',
+      'unread': 'Para Ler',
     };
     return statusLabels[status] || status;
   };
 
   const addToLibrary = async (status, message, navigateTo) => {
     try {
-      // VALIDAÇÃO: Verifica se já está na biblioteca com o mesmo status
       if (isInLibrary && libraryBookStatus === status) {
         Alert.alert(
           'Livro já adicionado',
@@ -77,7 +75,6 @@ const BookDetailsScreen = ({ route, navigation }) => {
         return;
       }
 
-      // VALIDAÇÃO: Se já está na biblioteca com status diferente, pergunta se quer mudar
       if (isInLibrary && libraryBookStatus !== status) {
         Alert.alert(
           'Livro já na biblioteca',
@@ -95,7 +92,6 @@ const BookDetailsScreen = ({ route, navigation }) => {
         return;
       }
 
-      // Se não está na biblioteca, adiciona normalmente
       await performAdd(status, message, navigateTo);
 
     } catch (error) {
@@ -151,20 +147,17 @@ const BookDetailsScreen = ({ route, navigation }) => {
   const performUpdate = async (status, message, navigateTo) => {
     setLoading(true);
 
-    // Prepara os campos a atualizar
     const updates = {
       status,
       isWishlist: status === 'wishlist',
     };
 
-    // Se estiver a mover para "reading" (A Ler), reseta o progresso
     if (status === 'reading') {
       updates.current_page = 0;
       updates.currentPage = 0;
       updates.progress = 0;
     }
 
-    // Se estiver a marcar como "read" (Lido), completa o progresso
     if (status === 'read') {
       const totalPages = book.pages || book.pageCount || 0;
       updates.current_page = totalPages;
@@ -197,13 +190,12 @@ const BookDetailsScreen = ({ route, navigation }) => {
   };
 
   const handleAddToMyLibrary = async () => {
-    await addToLibrary('read', 'Livro adicionado à Biblioteca!', null);
+    await addToLibrary('toRead', 'Livro adicionado à Biblioteca como "Para Ler"!', 'MyLibrary');
   };
 
   const handleToggleFavorite = async () => {
     try {
       if (!isInLibrary) {
-        // Se não está na biblioteca, adiciona como favorito
         const isbn = book.isbn || book.isbn_13?.[0] || book.key?.split('/').pop() || `temp_${Date.now()}`;
         
         const bookData = {
@@ -239,7 +231,6 @@ const BookDetailsScreen = ({ route, navigation }) => {
         setLoading(false);
 
       } else {
-        // Se já está na biblioteca, só toggle o favorito
         const newFavoriteStatus = !book.isFavorite;
         
         setLoading(true);
@@ -266,7 +257,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
       
-      {/* HEADER */}
+      {}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton} 
@@ -279,7 +270,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.pageTitle}>Detalhes do Livro</Text>
 
-        {/* CARD PRINCIPAL COM CAPA E INFO */}
+        {}
         <View style={styles.mainCard}>
           <View style={styles.coverContainer}>
             {coverUrl ? (
@@ -333,7 +324,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
           )}
         </TouchableOpacity>
 
-        {/* ADICIONAR A ESTANTES */}
+        {}
         <Text style={styles.sectionTitle}>Adicionar a Estantes</Text>
 
         <View style={styles.shelfButtons}>
@@ -360,7 +351,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* ADICIONAR À BIBLIOTECA */}
+        {}
         <TouchableOpacity 
           style={[styles.bigButton, styles.libraryButton]} 
           onPress={handleAddToMyLibrary}
@@ -370,13 +361,13 @@ const BookDetailsScreen = ({ route, navigation }) => {
             <ActivityIndicator color="#FFF" />
           ) : (
             <>
-              <MaterialIcons name="library-books" size={20} color="#FFF" />
+              <MaterialIcons name="library-add" size={20} color="#FFF" />
               <Text style={styles.bigButtonText}>Adicionar à Minha Biblioteca</Text>
             </>
           )}
         </TouchableOpacity>
 
-        {/* SINOPSE */}
+        {}
         <Text style={styles.sectionTitle}>Sinopse</Text>
         <View style={styles.synopsisCard}>
           <Text style={styles.synopsisText}>
@@ -384,7 +375,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
           </Text>
         </View>
 
-        {/* INFORMAÇÕES ADICIONAIS */}
+        {}
         <View style={styles.additionalInfo}>
           {(book.publishedDate || book.publishYear) && (
             <View style={styles.infoRow}>
@@ -415,7 +406,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
           )}
         </View>
 
-        {/* CATEGORIAS */}
+        {}
         {(Array.isArray(book.categories) && book.categories.length > 0) && (
           <View style={styles.categoriesCard}>
             <Text style={styles.categoriesTitle}>Categorias</Text>
@@ -429,7 +420,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
           </View>
         )}
         
-        {/* CATEGORIAS (se vier como string) */}
+        {}
         {(typeof book.categories === 'string' && book.categories.length > 0) && (
           <View style={styles.categoriesCard}>
             <Text style={styles.categoriesTitle}>Categorias</Text>

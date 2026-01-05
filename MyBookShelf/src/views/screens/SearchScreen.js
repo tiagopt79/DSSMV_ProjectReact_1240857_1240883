@@ -6,8 +6,11 @@ import {
   StyleSheet, 
   ActivityIndicator,
   Text,
-  TouchableOpacity 
+  TouchableOpacity,
+  Alert,
+  StatusBar 
 } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { searchByTitle } from '../../services/googleBooksApi';
 import BookCard from '../components/BookCard';
 import colors from '../../theme/colors';
@@ -19,17 +22,15 @@ const SearchScreen = ({ route, navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Verifica se veio de uma lista
   const fromList = route.params?.fromList || false;
   const listId = route.params?.listId || null;
   const listName = route.params?.listName || null;
 
-  console.log('🔍 SearchScreen - Params recebidos:');
+  console.log('📚 SearchScreen - Params recebidos:');
   console.log('  - fromList:', fromList);
   console.log('  - listId:', listId);
   console.log('  - listName:', listName);
 
-  // Busca inicial ao carregar
   useEffect(() => {
     handleSearch('Harry Potter');
   }, []);
@@ -63,17 +64,16 @@ const SearchScreen = ({ route, navigation }) => {
     console.log('📋 fromList:', fromList);
 
     if (fromList) {
-      // ==== VEIO DE LISTA → LibraryBookDetailsScreen ====
-      console.log('🟢 Navegando para LibraryBookDetailsScreen (adicionar à lista)');
+      console.log('🟢 Navegando para LibraryBookDetailsScreen para adicionar à lista...');
       
       navigation.navigate('LibraryBookDetails', { 
         book: book,
         fromList: true,
         listId: listId,
         listName: listName,
+        isNewBook: true,
       });
     } else {
-      // ==== PESQUISA NORMAL → BookDetailsScreen ====
       console.log('🔵 Navegando para BookDetailsScreen (comportamento normal)');
       
       navigation.navigate('BookDetails', { 
@@ -84,16 +84,43 @@ const SearchScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* Banner se vier de uma lista */}
+      <StatusBar barStyle="light-content" backgroundColor="#2A5288" />
+      
+      {}
+      <View style={styles.headerContainer}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={26} color="#FFFFFF" />
+          </TouchableOpacity>
+          
+          <View style={styles.headerTextContainer}>
+            <Icon name="search" size={28} color="#FFFFFF" style={styles.headerIcon} />
+            <View>
+              <Text style={styles.headerTitle}>Pesquisar</Text>
+              <Text style={styles.headerSubtitle}>
+                {fromList ? `Adicionar a ${listName}` : 'Encontra o teu próximo livro'}
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.headerSpace} />
+        </View>
+      </View>
+
+      {}
       {fromList && listName && (
         <View style={styles.listBanner}>
+          <Icon name="playlist-add" size={20} color="#FFFFFF" />
           <Text style={styles.listBannerText}>
-            📚 Adicionando à lista: {listName}
+            Toca num livro para adicionar à lista
           </Text>
         </View>
       )}
 
-      {/* Barra de pesquisa */}
+      {}
       <View style={styles.searchContainer}>
         <TextInput 
           style={styles.input} 
@@ -113,7 +140,7 @@ const SearchScreen = ({ route, navigation }) => {
         )}
       </View>
 
-      {/* Loading */}
+      {}
       {loading && (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -121,7 +148,7 @@ const SearchScreen = ({ route, navigation }) => {
         </View>
       )}
 
-      {/* Error */}
+      {}
       {error && !loading && (
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>⚠ {error}</Text>
@@ -134,7 +161,7 @@ const SearchScreen = ({ route, navigation }) => {
         </View>
       )}
 
-      {/* Resultados */}
+      {}
       {!loading && !error && (
         <>
           {searchResults.length === 0 && hasSearched ? (
@@ -155,6 +182,7 @@ const SearchScreen = ({ route, navigation }) => {
                   <BookCard 
                     book={item} 
                     onPress={() => handleBookPress(item)}
+                    hideStatus={true}
                   />
                 )}
                 contentContainerStyle={styles.listContent}
@@ -172,16 +200,75 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  headerContainer: {
+    backgroundColor: '#2A5288',
+    paddingBottom: 16,
+    elevation: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 8,
+  },
+  backButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  headerTextContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 16,
+  },
+  headerIcon: {
+    marginRight: 12,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.85)',
+  },
+  headerSpace: {
+    width: 48,
+    height: 48,
+  },
   listBanner: {
     backgroundColor: '#27AE60',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
   },
   listBannerText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
   },
   searchContainer: {
     backgroundColor: '#FFF',

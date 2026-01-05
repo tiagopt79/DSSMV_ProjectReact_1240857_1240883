@@ -4,13 +4,13 @@ import { View, Text, StyleSheet, StatusBar, Platform, SafeAreaView } from 'react
 const AppHeader = ({ title = "MyBookShelf", subtitle }) => {
   return (
     <View style={styles.headerContainer}>
-      {/* Configura a barra de status (bateria, wifi) para ficar com letras brancas */}
+      {}
       <StatusBar backgroundColor="#254E70" barStyle="light-content" />
 
       <View style={styles.content}>
         <Text style={styles.title}>{title}</Text>
 
-        {/* Só mostra o subtítulo se ele for passado como propriedade */}
+        {}
         {subtitle && (
           <Text style={styles.subtitle}>{subtitle}</Text>
         )}
@@ -21,14 +21,14 @@ const AppHeader = ({ title = "MyBookShelf", subtitle }) => {
 
 const styles = StyleSheet.create({
   headerContainer: {
-    backgroundColor: '#254E70', // O Azul escuro da tua imagem
+    backgroundColor: '#254E70',
     width: '100%',
-    paddingTop: Platform.OS === 'android' ? 20 : 0, // Ajuste para Android
+    paddingTop: Platform.OS === 'android' ? 20 : 0,
     paddingBottom: 20,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 0, 
     borderBottomRightRadius: 0,
-    // Se quiseres dar uma pequena sombra em baixo:
+
     elevation: 4,
     shadowColor: '#000',
     shadowOpacity: 0.2,
@@ -38,14 +38,14 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   title: {
-    fontSize: 28, // Tamanho grande como na foto
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 4, // Espaço entre o título e o subtítulo
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: '#E0E0E0', // Branco um pouco mais suave
+    color: '#E0E0E0',
     fontWeight: '400',
   }
 });

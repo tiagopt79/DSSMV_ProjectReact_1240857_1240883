@@ -1,4 +1,3 @@
-// src/flux/reducers/booksReducer.js
 import * as types from '../types';
 
 const initialState = {

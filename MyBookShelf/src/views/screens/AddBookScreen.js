@@ -1,4 +1,3 @@
-// src/views/screens/AddBookScreen.js - SEM Redux
 import React, { useState } from 'react';
 import {
   View,
@@ -22,7 +21,6 @@ const AddBookScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [bookPreview, setBookPreview] = useState(null);
 
-  // Buscar livro por ISBN
   const handleSearchISBN = async () => {
     if (!isbn.trim()) {
       Alert.alert('Erro', 'Por favor, insira um ISBN válido');
@@ -40,7 +38,6 @@ const AddBookScreen = ({ navigation }) => {
     }
   };
 
-  // Adicionar livro à biblioteca
   const handleAddBook = async () => {
     if (!bookPreview) return;
 
@@ -91,7 +88,7 @@ const AddBookScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        {/* Input ISBN */}
+        {}
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
@@ -114,7 +111,7 @@ const AddBookScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Preview do Livro */}
+        {}
         {bookPreview && (
           <View style={styles.previewContainer}>
             <Text style={styles.previewTitle}>Preview:</Text>
@@ -154,7 +151,7 @@ const AddBookScreen = ({ navigation }) => {
               </View>
             </View>
 
-            {/* Botão Adicionar */}
+            {}
             <TouchableOpacity
               style={styles.addButton}
               onPress={handleAddBook}
@@ -171,7 +168,7 @@ const AddBookScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* Dica */}
+        {}
         <View style={styles.tipContainer}>
           <Text style={styles.tipTitle}>💡 Dica:</Text>
           <Text style={styles.tipText}>
@@ -180,7 +177,7 @@ const AddBookScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        {/* Botão alternativo para busca manual */}
+        {}
         <TouchableOpacity
           style={styles.manualButton}
           onPress={() => navigation.navigate('Search')}

@@ -14,12 +14,12 @@ import {
   Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { updateBookProgress, getReadingSessions, addReadingSession, getBookById } from '../../services/restDbApi';
+import { updateBookProgress, getReadingSessions, addReadingSession, getBookById, updateBook } from '../../services/restDbApi';
 
 const BookProgressScreen = ({ navigation, route }) => {
   const { book: initialBook } = route.params;
   
-  const [book, setBook] = useState(initialBook); // Estado do livro atualizado
+  const [book, setBook] = useState(initialBook);
   const [currentPage, setCurrentPage] = useState('');
   const [notes, setNotes] = useState('');
   const [history, setHistory] = useState([]);
@@ -31,7 +31,6 @@ const BookProgressScreen = ({ navigation, route }) => {
     loadHistory();
   }, []);
 
-  // Carregar dados atualizados do livro
   const loadBookData = async () => {
     try {
       const updatedBook = await getBookById(initialBook._id);
@@ -66,7 +65,6 @@ const BookProgressScreen = ({ navigation, route }) => {
     const totalPages = book.pageCount || book.pages || 0;
     const lastPage = book.currentPage || book.current_page || 0;
 
-    // Validações
     if (!currentPage || isNaN(newPage)) {
       Alert.alert('Erro', 'Por favor, insere uma página válida');
       return;
@@ -77,7 +75,6 @@ const BookProgressScreen = ({ navigation, route }) => {
       return;
     }
 
-    // VALIDAÇÃO: Não permite retroceder
     if (newPage < lastPage) {
       Alert.alert(
         'Aviso', 
@@ -94,11 +91,8 @@ const BookProgressScreen = ({ navigation, route }) => {
     try {
       setSaving(true);
 
-      // Atualizar progresso do livro
       const updatedBook = await updateBookProgress(initialBook._id, newPage);
-      setBook(updatedBook); // Atualiza o estado local
-
-      // Adicionar sessão ao histórico
+      
       const session = {
         bookId: initialBook._id,
         date: new Date().toISOString(),
@@ -111,16 +105,44 @@ const BookProgressScreen = ({ navigation, route }) => {
 
       await addReadingSession(session);
 
-      Alert.alert('Sucesso', 'Progresso guardado!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            setCurrentPage('');
-            setNotes('');
-            loadHistory();
+      if (newPage >= totalPages) {
+        console.log('📚 Livro completado! Marcando como lido...');
+        
+        await updateBook(initialBook._id, {
+          status: 'read',
+          current_page: totalPages,
+          progress: 100,
+          finished_date: new Date().toISOString(),
+        });
+
+
+        const finalBook = await getBookById(initialBook._id);
+        setBook(finalBook);
+
+        Alert.alert(
+          '🎉 Parabéns!',
+          `Terminaste "${book.title}"! O livro foi marcado como lido.`,
+          [
+            {
+              text: 'Voltar',
+              onPress: () => navigation.goBack(),
+            },
+          ]
+        );
+      } else {
+        setBook(updatedBook);
+        
+        Alert.alert('Sucesso', 'Progresso guardado!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              setCurrentPage('');
+              setNotes('');
+              loadHistory();
+            },
           },
-        },
-      ]);
+        ]);
+      }
     } catch (error) {
       console.error('Erro ao guardar progresso:', error);
       Alert.alert('Erro', 'Não foi possível guardar o progresso');
@@ -173,7 +195,7 @@ const BookProgressScreen = ({ navigation, route }) => {
       </View>
 
       <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        {/* Informação do Livro */}
+        {}
         <View style={styles.bookInfoCard}>
           <Image
             source={{ uri: book.thumbnail || book.cover || 'https://via.placeholder.com/128x196?text=Sem+Capa' }}
@@ -187,7 +209,7 @@ const BookProgressScreen = ({ navigation, route }) => {
           </View>
         </View>
 
-        {/* Progresso de Leitura */}
+        {}
         <View style={styles.progressCard}>
           <Text style={styles.sectionTitle}>Progresso de Leitura</Text>
           <View style={styles.progressBarContainer}>
@@ -201,7 +223,7 @@ const BookProgressScreen = ({ navigation, route }) => {
           </Text>
         </View>
 
-        {/* Atualizar Progresso */}
+        {}
         <View style={styles.updateCard}>
           <Text style={styles.sectionTitle}>Atualizar Progresso</Text>
           
@@ -242,7 +264,7 @@ const BookProgressScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Histórico de Leitura */}
+        {}
         <View style={styles.historyCard}>
           <View style={styles.historyTitleContainer}>
             <Icon name="history" size={24} color="#254E70" />

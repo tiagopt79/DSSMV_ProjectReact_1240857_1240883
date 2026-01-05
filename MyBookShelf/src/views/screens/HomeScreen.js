@@ -1,4 +1,3 @@
-// src/views/screens/HomeScreen.js - Cores Mais Fortes para Contraste
 import React, { useState } from 'react';
 import { 
   View, 
@@ -34,7 +33,7 @@ const HomeScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#2A5288" />
       
-      {/* Header - Azul mais forte */}
+      {}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>MyBookShelf</Text>
         <Text style={styles.headerSubtitle}>Que livro você leu hoje?</Text>
@@ -45,7 +44,7 @@ const HomeScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Adicionar Livro Card */}
+        {}
         <TouchableOpacity 
           style={styles.addBookCard}
           onPress={handleAddBookPress}
@@ -60,7 +59,7 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        {/* Livros em Leitura */}
+        {}
         <TouchableOpacity 
           style={styles.wideButton}
           onPress={() => navigation.navigate('ReadingBooks')}
@@ -70,7 +69,7 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.wideButtonText}>Livros em leitura</Text>
         </TouchableOpacity>
 
-        {/* Menu Grid - 2 Colunas */}
+        {}
         <View style={styles.menuGrid}>
           <TouchableOpacity
             style={styles.menuCard}
@@ -95,7 +94,7 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Minha Biblioteca */}
+        {}
         <TouchableOpacity 
           style={styles.wideButton}
           onPress={() => navigation.navigate('MyLibrary')}
@@ -105,7 +104,7 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.wideButtonText}>Minha Biblioteca</Text>
         </TouchableOpacity>
 
-        {/* Minhas Listas */}
+        {}
         <TouchableOpacity 
           style={styles.wideButton}
           onPress={() => navigation.navigate('MyLists')}
@@ -116,7 +115,7 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Modal de Adicionar Livro */}
+      {}
       <AddBookModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -130,21 +129,21 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8D5A8', // Bege mais escuro que #F5ECCC para mais contraste
+    backgroundColor: '#E8D5A8', 
   },
   header: {
-    backgroundColor: '#2A5288', // blue_primary - Azul mais forte que o colors.primary
+    backgroundColor: '#2A5288',
     paddingTop: 20,
     paddingBottom: 28,
     paddingHorizontal: 20,
-    elevation: 10, // Sombra ainda mais forte
+    elevation: 10, 
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.4, // Mais opaca
+    shadowOpacity: 0.4,
     shadowRadius: 8,
   },
   headerTitle: {
-    fontSize: 36, // Maior
+    fontSize: 36,
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: 6,
@@ -152,7 +151,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 16,
-    color: '#FFFFFF', // Branco puro em vez de rgba
+    color: '#FFFFFF',
     fontWeight: '400',
   },
   scrollView: {
@@ -165,23 +164,23 @@ const styles = StyleSheet.create({
   addBookCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF', // Branco puro
+    backgroundColor: '#FFFFFF',
     padding: 20,
     borderRadius: 16,
     marginBottom: 16,
-    elevation: 8, // Sombra mais forte
+    elevation: 8,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25, // Mais opaca
+    shadowOpacity: 0.25,
     shadowRadius: 6,
-    borderWidth: 1.5, // Borda mais grossa
-    borderColor: 'rgba(0, 0, 0, 0.08)', // Borda mais visível
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
   iconCircle: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#2A5288', // blue_primary - mais forte
+    backgroundColor: '#2A5288',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -193,37 +192,37 @@ const styles = StyleSheet.create({
   addBookTitle: {
     fontSize: 19,
     fontWeight: 'bold',
-    color: '#000000', // Preto puro
+    color: '#000000',
     marginBottom: 4,
   },
   addBookSubtitle: {
     fontSize: 14,
-    color: '#4A4A4A', // gray_4A4 - mais escuro que #666
+    color: '#4A4A4A',
     lineHeight: 18,
   },
   wideButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF', // Branco puro
+    backgroundColor: '#FFFFFF',
     paddingVertical: 20,
     paddingHorizontal: 22,
     borderRadius: 16,
     marginBottom: 16,
-    elevation: 8, // Sombra mais forte
+    elevation: 8,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25, // Mais opaca
+    shadowOpacity: 0.25,
     shadowRadius: 6,
-    borderWidth: 1.5, // Borda mais grossa
-    borderColor: 'rgba(0, 0, 0, 0.08)', // Borda mais visível
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
   wideButtonIcon: {
     marginRight: 16,
   },
   wideButtonText: {
     fontSize: 18,
-    fontWeight: '700', // Bold mais forte
-    color: '#000000', // Preto puro
+    fontWeight: '700',
+    color: '#000000',
     flex: 1,
   },
   menuGrid: {
@@ -233,20 +232,20 @@ const styles = StyleSheet.create({
   },
   menuCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF', // Branco puro
+    backgroundColor: '#FFFFFF',
     paddingVertical: 32,
     paddingHorizontal: 16,
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8, // Sombra mais forte
+    elevation: 8,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25, // Mais opaca
+    shadowOpacity: 0.25,
     shadowRadius: 6,
     minHeight: 150,
-    borderWidth: 1.5, // Borda mais grossa
-    borderColor: 'rgba(0, 0, 0, 0.08)', // Borda mais visível
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 0, 0, 0.08)',
   },
   menuIconCircle: {
     width: 76,
@@ -258,8 +257,8 @@ const styles = StyleSheet.create({
   },
   menuCardText: {
     fontSize: 15,
-    fontWeight: '700', // Bold mais forte
-    color: '#000000', // Preto puro
+    fontWeight: '700',
+    color: '#000000',
     textAlign: 'center',
     lineHeight: 20,
   },

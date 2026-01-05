@@ -1,4 +1,3 @@
-// src/views/screens/MyListsScreen.js - Design Premium COM NAVEGAÇÃO
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -51,17 +50,14 @@ const MyListsScreen = ({ navigation }) => {
 
   const [selectedIcon, setSelectedIcon] = useState('list');
 
-  // Carregar listas
   const loadLists = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Buscar listas da API
       const listsData = await getLists();
       setLists(listsData);
     } catch (error) {
       console.error('Erro ao carregar listas:', error);
-      // Se não houver listas na API, inicializa com array vazio
       setLists([]);
     } finally {
       setLoading(false);
@@ -78,7 +74,6 @@ const MyListsScreen = ({ navigation }) => {
     setRefreshing(false);
   }, [loadLists]);
 
-  // Criar nova lista
   const handleCreateList = async () => {
     if (!newListName.trim()) {
       Alert.alert('Erro', 'Por favor, insira um nome para a lista.');
@@ -86,7 +81,6 @@ const MyListsScreen = ({ navigation }) => {
     }
 
     try {
-      // Criar lista na API
       const newList = await createList({
         name: newListName,
         description: newListDescription,
@@ -94,10 +88,8 @@ const MyListsScreen = ({ navigation }) => {
         icon: selectedIcon,
       });
 
-      // Atualizar lista local
       setLists([...lists, newList]);
       
-      // Resetar formulário
       setModalVisible(false);
       setNewListName('');
       setNewListDescription('');
@@ -111,7 +103,6 @@ const MyListsScreen = ({ navigation }) => {
     }
   };
 
-  // Apagar lista
   const handleDeleteList = (listId, listName) => {
     Alert.alert(
       'Apagar Lista',
@@ -123,10 +114,8 @@ const MyListsScreen = ({ navigation }) => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Apagar da API
               await deleteList(listId);
               
-              // Remover da lista local
               setLists(lists.filter(list => list._id !== listId));
               
               Alert.alert('✅ Apagada!', `Lista "${listName}" foi apagada.`);
@@ -140,18 +129,16 @@ const MyListsScreen = ({ navigation }) => {
     );
   };
 
-  // Navegar para detalhes da lista
   const handleListPress = (list) => {
     navigation.navigate('ListDetails', {
       listId: list._id,
       listName: list.name,
       listColor: list.color,
       listIcon: list.icon,
-      onGoBack: loadLists, // Callback para atualizar quando voltar
+      onGoBack: loadLists,
     });
   };
 
-  // Renderizar card de lista (Grid 2 colunas)
   const renderListCard = ({ item }) => (
     <TouchableOpacity
       style={[styles.listCard, { borderTopColor: item.color, borderTopWidth: 4 }]}
@@ -159,17 +146,17 @@ const MyListsScreen = ({ navigation }) => {
       onLongPress={() => handleDeleteList(item._id, item.name)}
       activeOpacity={0.85}
     >
-      {/* Gradiente decorativo de fundo */}
+      {}
       <View style={[styles.cardGradient, { backgroundColor: item.color + '10' }]} />
       
-      {/* Conteúdo */}
+      {}
       <View style={styles.cardContent}>
-        {/* Ícone grande */}
+        {}
         <View style={[styles.cardIcon, { backgroundColor: item.color + '20' }]}>
           <Icon name={item.icon} size={36} color={item.color} />
         </View>
 
-        {/* Informações */}
+        {}
         <Text style={styles.cardTitle} numberOfLines={2}>
           {item.name}
         </Text>
@@ -180,7 +167,7 @@ const MyListsScreen = ({ navigation }) => {
           </Text>
         ) : null}
 
-        {/* Footer com contador */}
+        {}
         <View style={styles.cardFooter}>
           <View style={[styles.bookBadge, { backgroundColor: item.color + '15' }]}>
             <Icon name="book" size={14} color={item.color} />
@@ -193,7 +180,6 @@ const MyListsScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
-  // Empty state
   const renderEmptyState = () => (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconCircle}>
@@ -203,13 +189,6 @@ const MyListsScreen = ({ navigation }) => {
       <Text style={styles.emptyText}>
         Organize os seus livros criando listas personalizadas!
       </Text>
-      <TouchableOpacity
-        style={styles.emptyButton}
-        onPress={() => setModalVisible(true)}
-      >
-        <Icon name="add-circle" size={24} color="#fff" style={{ marginRight: 8 }} />
-        <Text style={styles.emptyButtonText}>Criar Primeira Lista</Text>
-      </TouchableOpacity>
     </View>
   );
 
@@ -233,25 +212,22 @@ const MyListsScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
 
-      {/* HEADER */}
+      {}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-back" size={26} color="#2A5288" />
         </TouchableOpacity>
       </View>
 
-      {/* TÍTULO E BOTÃO CRIAR */}
+      {}
       <View style={styles.titleSection}>
         <View>
           <Text style={styles.mainTitle}>Minhas Listas</Text>
           <Text style={styles.subtitle}>{lists.length} listas criadas</Text>
         </View>
-        <TouchableOpacity style={styles.fabButton} onPress={() => setModalVisible(true)}>
-          <Icon name="add" size={28} color="#fff" />
-        </TouchableOpacity>
       </View>
 
-      {/* GRID DE LISTAS (2 colunas) */}
+      {}
       <FlatList
         data={lists}
         renderItem={renderListCard}
@@ -271,7 +247,16 @@ const MyListsScreen = ({ navigation }) => {
         ListEmptyComponent={renderEmptyState}
       />
 
-      {/* MODAL CRIAR LISTA */}
+      {}
+      <TouchableOpacity
+        style={styles.floatingButton}
+        onPress={() => setModalVisible(true)}
+        activeOpacity={0.8}
+      >
+        <Icon name="add" size={28} color="#FFFFFF" />
+      </TouchableOpacity>
+
+      {}
       <Modal
         visible={modalVisible}
         transparent={true}
@@ -280,7 +265,7 @@ const MyListsScreen = ({ navigation }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            {/* Header do Modal */}
+            {}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Nova Lista</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
@@ -288,7 +273,7 @@ const MyListsScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            {/* Nome */}
+            {}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Nome da Lista *</Text>
               <TextInput
@@ -301,7 +286,7 @@ const MyListsScreen = ({ navigation }) => {
               />
             </View>
 
-            {/* Descrição */}
+            {}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Descrição</Text>
               <TextInput
@@ -316,7 +301,7 @@ const MyListsScreen = ({ navigation }) => {
               />
             </View>
 
-            {/* Escolher Cor */}
+            {}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Escolher Cor</Text>
               <View style={styles.colorPicker}>
@@ -338,7 +323,7 @@ const MyListsScreen = ({ navigation }) => {
               </View>
             </View>
 
-            {/* Escolher Ícone */}
+            {}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Escolher Ícone</Text>
               <View style={styles.iconPicker}>
@@ -361,7 +346,7 @@ const MyListsScreen = ({ navigation }) => {
               </View>
             </View>
 
-            {/* Botão Criar */}
+            {}
             <TouchableOpacity style={styles.createButton} onPress={handleCreateList}>
               <Icon name="check-circle" size={24} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.createButtonText}>Criar Lista</Text>
@@ -408,9 +393,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   titleSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
@@ -424,22 +406,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#666666',
   },
-  fabButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#2A5288',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#2A5288',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-  },
   listContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 30,
+    paddingBottom: 100,
   },
   row: {
     justifyContent: 'space-between',
@@ -537,26 +506,23 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#666666',
     textAlign: 'center',
-    marginBottom: 32,
     lineHeight: 22,
   },
-  emptyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  floatingButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#2A5288',
-    paddingHorizontal: 30,
-    paddingVertical: 16,
-    borderRadius: 30,
-    elevation: 6,
-    shadowColor: '#2A5288',
-    shadowOffset: { width: 0, height: 3 },
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 5,
-  },
-  emptyButtonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: 'bold',
+    shadowRadius: 8,
   },
   modalOverlay: {
     flex: 1,

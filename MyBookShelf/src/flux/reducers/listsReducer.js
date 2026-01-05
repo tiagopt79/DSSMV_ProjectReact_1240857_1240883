@@ -1,4 +1,3 @@
-// src/flux/reducers/listsReducer.js
 import * as types from '../types';
 
 const initialState = {

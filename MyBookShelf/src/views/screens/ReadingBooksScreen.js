@@ -1,4 +1,3 @@
-// src/views/screens/ReadingBooksScreen.js - CORRIGIDO
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -45,7 +44,6 @@ const ReadingBooksScreen = ({ navigation }) => {
   }, [loadBooks]);
 
   const handleUpdateProgress = (book) => {
-    // Converte para o formato esperado pelo BookProgressScreen
     const bookData = {
       _id: book._id,
       title: book.title,
@@ -99,12 +97,9 @@ const ReadingBooksScreen = ({ navigation }) => {
   };
 
   const renderBookCard = ({ item }) => {
-    // CORREÇÃO: Calcula o progresso real baseado nas páginas
     const currentPage = item.current_page || 0;
     const totalPages = item.pages || 0;
     
-    // Se não tem páginas lidas ou total = 0, progresso = 0
-    // Senão, calcula baseado nas páginas (ignora item.progress)
     const progress = (totalPages > 0 && currentPage > 0) 
       ? Math.round((currentPage / totalPages) * 100) 
       : 0;
@@ -117,7 +112,7 @@ const ReadingBooksScreen = ({ navigation }) => {
         onPress={() => handleUpdateProgress(item)}
         activeOpacity={0.95}
       >
-        {/* Capa do Livro */}
+        {}
         <View style={styles.coverContainer}>
           {item.cover ? (
             <Image source={{ uri: item.cover }} style={styles.cover} />
@@ -128,7 +123,7 @@ const ReadingBooksScreen = ({ navigation }) => {
           )}
         </View>
 
-        {/* Informações do Livro */}
+        {}
         <View style={styles.bookInfo}>
           <Text style={styles.bookTitle} numberOfLines={2}>
             {item.title}
@@ -137,7 +132,7 @@ const ReadingBooksScreen = ({ navigation }) => {
             {item.author || 'Autor Desconhecido'}
           </Text>
 
-          {/* Barra de Progresso */}
+          {}
           <View style={styles.progressSection}>
             <View style={styles.progressBarBg}>
               <View 
@@ -152,7 +147,7 @@ const ReadingBooksScreen = ({ navigation }) => {
             </Text>
           </View>
 
-          {/* Botões de Ação */}
+          {}
           <View style={styles.actionsRow}>
             <TouchableOpacity
               style={styles.updateBtn}
@@ -215,7 +210,7 @@ const ReadingBooksScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
       
-      {/* Header com Botão Voltar */}
+      {}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
@@ -225,7 +220,7 @@ const ReadingBooksScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Card de Estatísticas */}
+      {}
       <View style={styles.statsCard}>
         <Text style={styles.statsTitle}>Livros em Leitura</Text>
         <View style={styles.statsRow}>
@@ -237,7 +232,7 @@ const ReadingBooksScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Lista de Livros */}
+      {}
       <FlatList
         data={books}
         renderItem={renderBookCard}

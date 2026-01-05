@@ -1,3 +1,4 @@
+// src/views/screens/LibraryBookDetailsScreen.js - COMPLETO
 import React, { useState } from 'react';
 import {
   View,
@@ -11,19 +12,44 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { addBookToList } from '../../services/restDbApi';
+import { addBook, getBookByIsbn, addBookToList, updateBook } from '../../services/restDbApi';
 
 const LibraryBookDetailsScreen = ({ route, navigation }) => {
-  const { book, fromList, listId, listName } = route?.params || {};
+  const { book: initialBook, fromList, listId, listName, isNewBook, viewOnly } = route?.params || {};
+  const [book, setBook] = useState(initialBook);
   const [loading, setLoading] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(initialBook?.isFavorite || false);
 
-  const isFromList = fromList === true && listId;
+  const isFromList = fromList === true && listId && isNewBook === true;
+  const isViewOnly = viewOnly === true || (fromList === true && !isNewBook);
 
   const handleMainAction = async () => {
     if (isFromList) {
       try {
         setLoading(true);
-        await addBookToList(listId, book._id);
+        console.log('\n🔵 Iniciando adição do livro à lista...');
+
+        let existingBook = null;
+        if (book.isbn) {
+          existingBook = await getBookByIsbn(book.isbn);
+        }
+
+        let bookToAdd;
+
+        if (existingBook) {
+          bookToAdd = existingBook;
+          console.log('✅ Usando livro existente, ID:', existingBook._id);
+        } else {
+          console.log('➕ Adicionando livro à RestDB...');
+          const newBook = await addBook({
+            ...book,
+            status: 'wishlist',
+          });
+          bookToAdd = newBook;
+          console.log('✅ Livro adicionado à RestDB, ID:', newBook._id);
+        }
+
+        await addBookToList(listId, bookToAdd._id);
         
         Alert.alert(
           'Sucesso!',
@@ -31,18 +57,114 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       } catch (error) {
-        console.error('Erro ao adicionar livro à lista:', error);
+        console.error('❌ Erro ao adicionar livro:', error);
         
-        if (error.message?.includes('já está na lista')) {
-          Alert.alert('Aviso', 'Este livro já está nesta lista!');
-        } else {
-          Alert.alert('Erro', 'Não foi possível adicionar o livro à lista');
+        let errorMessage = 'Não foi possível adicionar o livro à lista';
+        
+        if (error.message?.includes('já está')) {
+          errorMessage = 'Este livro já está nesta lista!';
         }
+        
+        Alert.alert('Erro', errorMessage);
       } finally {
         setLoading(false);
       }
     } else {
-      navigation.navigate('ReadingSession', { book });
+      try {
+        if (book.status === 'read') {
+          Alert.alert(
+            '📖 Reler Livro',
+            `Você já terminou "${book.title}". Deseja ler novamente?`,
+            [
+              { text: 'Cancelar', style: 'cancel' },
+              {
+                text: 'Sim, Reler',
+                onPress: async () => {
+                  try {
+                    await updateBook(book._id, { 
+                      status: 'reading', 
+                      current_page: 0,
+                      currentPage: 0,
+                      progress: 0,
+                      finished_date: null,
+                    });
+                    
+                    Alert.alert(
+                      '✅ Livro Reiniciado!',
+                      'O livro foi movido para "A Ler" e o progresso foi resetado.',
+                      [
+                        {
+                          text: 'Ir para A Ler',
+                          onPress: () => navigation.navigate('ReadingBooks'),
+                        },
+                        { text: 'OK' },
+                      ]
+                    );
+                  } catch (error) {
+                    console.error('Erro ao reiniciar livro:', error);
+                    Alert.alert('Erro', 'Não foi possível reiniciar o livro.');
+                  }
+                },
+              },
+            ]
+          );
+          return;
+        }
+
+        if (book.status === 'reading') {
+          Alert.alert(
+            '📖 Livro em Leitura',
+            `"${book.title}" já está na sua lista de livros em leitura.`,
+            [
+              {
+                text: 'Ver Lista',
+                onPress: () => navigation.navigate('ReadingBooks'),
+              },
+              { text: 'OK', style: 'cancel' },
+            ]
+          );
+          return;
+        }
+
+        await updateBook(book._id, { 
+          status: 'reading', 
+          current_page: 0,
+          currentPage: 0,
+          progress: 0 
+        });
+        
+        Alert.alert(
+          '✅ Adicionado!',
+          `"${book.title}" foi adicionado aos livros em leitura.`,
+          [
+            {
+              text: 'Ver Lista',
+              onPress: () => navigation.navigate('ReadingBooks'),
+            },
+            { text: 'OK' },
+          ]
+        );
+      } catch (error) {
+        console.error('Erro:', error);
+        Alert.alert('Erro', 'Não foi possível iniciar a leitura.');
+      }
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    try {
+      const newFavoriteStatus = !isFavorite;
+      await updateBook(book._id, { isFavorite: newFavoriteStatus });
+      setIsFavorite(newFavoriteStatus);
+      setBook({ ...book, isFavorite: newFavoriteStatus });
+      
+      Alert.alert(
+        newFavoriteStatus ? '❤️ Favorito!' : '💔 Removido',
+        newFavoriteStatus ? 'Adicionado aos favoritos.' : 'Removido dos favoritos.'
+      );
+    } catch (error) {
+      console.error('Erro:', error);
+      Alert.alert('Erro', 'Não foi possível atualizar os favoritos.');
     }
   };
 
@@ -80,27 +202,27 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
     return book?.edition || 'N/A';
   };
 
-  const getReadingStatus = () => {
-    if (!book?.readingStatus) return 'Não iniciado';
-    const statusMap = {
-      'not_started': 'Não iniciado',
-      'reading': 'A ler',
-      'finished': 'Concluído',
-      'paused': 'Pausado'
-    };
-    return statusMap[book.readingStatus] || book.readingStatus;
-  };
-
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
 
+      {}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={26} color="#2C3E50" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalhes</Text>
-        <View style={styles.headerSpace} />
+        {}
+        {!isFromList && (
+          <TouchableOpacity style={styles.favoriteButton} onPress={handleToggleFavorite}>
+            <Icon 
+              name={isFavorite ? "heart" : "heart-outline"} 
+              size={26} 
+              color={isFavorite ? "#E91E63" : "#2C3E50"} 
+            />
+          </TouchableOpacity>
+        )}
+        {isFromList && <View style={styles.headerSpace} />}
       </View>
 
       {isFromList && (
@@ -146,7 +268,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Primeira linha de informações */}
+        {}
         <View style={styles.infoCardsRow}>
           <View style={styles.infoCard}>
             <Icon name="book-open-page-variant" size={20} color="#2A5288" style={styles.infoIcon} />
@@ -169,7 +291,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Segunda linha de informações */}
+        {}
         <View style={styles.infoCardsRow}>
           <View style={styles.infoCard}>
             <Icon name="office-building" size={20} color="#2A5288" style={styles.infoIcon} />
@@ -192,7 +314,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* Terceira linha de informações */}
+        {}
         <View style={styles.infoCardsRow}>
           <View style={styles.infoCardWide}>
             <Icon name="barcode" size={20} color="#2A5288" style={styles.infoIcon} />
@@ -208,19 +330,6 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
             <Text style={styles.infoValue}>{getAgeRating()}</Text>
           </View>
         </View>
-
-        {/* Estado de leitura - apenas se não for para adicionar a lista */}
-        {!isFromList && (
-          <View style={styles.readingStatusCard}>
-            <View style={styles.readingStatusHeader}>
-              <Icon name="progress-clock" size={24} color="#2A5288" />
-              <Text style={styles.readingStatusTitle}>Estado de Leitura</Text>
-            </View>
-            <View style={styles.readingStatusBadge}>
-              <Text style={styles.readingStatusText}>{getReadingStatus()}</Text>
-            </View>
-          </View>
-        )}
 
         {book?.description && (
           <View style={styles.descriptionCard}>
@@ -248,28 +357,38 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         )}
 
-        <TouchableOpacity
-          style={[
-            styles.mainButton,
-            isFromList && styles.addToListButton,
-            loading && styles.mainButtonDisabled,
-          ]}
-          onPress={handleMainAction}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <Icon
-              name={isFromList ? 'playlist-plus' : 'book-open-page-variant'}
-              size={24}
-              color="#FFFFFF"
-            />
-          )}
-          <Text style={styles.mainButtonText}>
-            {loading ? 'A adicionar...' : isFromList ? 'Guardar na Lista' : 'Começar a Ler'}
-          </Text>
-        </TouchableOpacity>
+        {}
+        {!isViewOnly && (
+          <TouchableOpacity
+            style={[
+              styles.mainButton,
+              isFromList && styles.addToListButton,
+              loading && styles.mainButtonDisabled,
+            ]}
+            onPress={handleMainAction}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : (
+              <Icon
+                name={isFromList ? 'playlist-plus' : book.status === 'read' ? 'book-refresh' : 'book-open-page-variant'}
+                size={24}
+                color="#FFFFFF"
+              />
+            )}
+            <Text style={styles.mainButtonText}>
+              {loading 
+                ? 'A adicionar...' 
+                : isFromList 
+                  ? 'Guardar na Lista' 
+                  : book.status === 'read'
+                    ? 'Reler Livro'
+                    : 'Começar a Ler'
+              }
+            </Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -288,11 +407,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 15,
-    paddingBottom: 15,
+    paddingVertical: 15,
     backgroundColor: '#E8D5A8',
   },
   headerButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  favoriteButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -474,45 +605,6 @@ const styles = StyleSheet.create({
   },
   smallerText: {
     fontSize: 13,
-  },
-  readingStatusCard: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 14,
-    padding: 16,
-    borderRadius: 14,
-    elevation: 3,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2A5288',
-  },
-  readingStatusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  readingStatusTitle: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#2C3E50',
-    marginLeft: 10,
-  },
-  readingStatusBadge: {
-    backgroundColor: '#E8F0F7',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: '#2A5288',
-  },
-  readingStatusText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2A5288',
   },
   descriptionCard: {
     backgroundColor: '#FFFFFF',

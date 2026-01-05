@@ -1,4 +1,3 @@
-// src/services/restDbApi.js - COM ENDPOINTS DE LISTAS
 import { API_KEY, DATABASE_URL } from '../consts/config';
 
 const headers = {
@@ -43,8 +42,6 @@ const normalizeBook = (book) => {
     publisher: book.publisher?.[0] || '',
   };
 };
-
-// ==================== LIVROS ====================
 
 export const addBook = async (book) => {
   try {
@@ -145,6 +142,7 @@ export const getBookById = async (id) => {
 export const updateBook = async (id, updates) => {
   try {
     logDebug('ATUALIZAR LIVRO', { id, updates });
+
 
     const currentBook = await getBookById(id);
     
@@ -388,26 +386,19 @@ export const updateBookProgress = async (bookId, newPage) => {
   }
 };
 
-// ==================== LISTAS ====================
 
 export const getLists = async () => {
   try {
     logDebug('BUSCAR LISTAS', {});
 
     const url = `${DATABASE_URL}/lists`;
-    console.log('GET de:', url);
-
     const response = await fetch(url, {
       method: 'GET',
       headers,
     });
 
-    console.log('Status:', response.status);
-
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Erro da API:', errorText);
-      throw new Error(`HTTP ${response.status}: ${errorText}`);
+      throw new Error(`HTTP ${response.status}`);
     }
 
     const data = await response.json();
@@ -420,22 +411,31 @@ export const getLists = async () => {
   }
 };
 
-export const getListById = async (id) => {
+export const getListById = async (listId) => {
   try {
-    logDebug('BUSCAR LISTA POR ID', { id });
+    console.log(`\n🔍 Tentando buscar lista com ID: "${listId}"`);
+    console.log(`Tipo do ID: ${typeof listId}`);
+    
+    logDebug('BUSCAR LISTA POR ID', { listId });
 
-    const url = `${DATABASE_URL}/lists/${id}`;
+    const url = `${DATABASE_URL}/lists/${listId}`;
+    console.log(`URL completa: ${url}`);
+    
     const response = await fetch(url, {
       method: 'GET',
       headers,
     });
 
+    console.log(`Status da resposta: ${response.status}`);
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ Erro da API: ${errorText}`);
+      throw new Error(`HTTP ${response.status}: Lista não encontrada`);
     }
 
     const data = await response.json();
-    console.log('Lista encontrada:', data);
+    console.log('✅ Lista encontrada:', data);
     return data;
 
   } catch (error) {
@@ -453,27 +453,20 @@ export const createList = async (listData) => {
       description: listData.description || '',
       color: listData.color || '#2A5288',
       icon: listData.icon || 'list',
-      bookIds: [], // Array de IDs de livros
+      bookIds: [],
       bookCount: 0,
-      created_date: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     };
 
-    logDebug('LISTA NORMALIZADA', newList);
-
     const url = `${DATABASE_URL}/lists`;
-    console.log('POST para:', url);
-
     const response = await fetch(url, {
       method: 'POST',
       headers,
       body: JSON.stringify(newList),
     });
 
-    console.log('Status:', response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Erro da API:', errorText);
       throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
@@ -487,11 +480,34 @@ export const createList = async (listData) => {
   }
 };
 
-export const updateList = async (id, updates) => {
+export const deleteList = async (listId) => {
   try {
-    logDebug('ATUALIZAR LISTA', { id, updates });
+    logDebug('DELETAR LISTA', { listId });
 
-    const currentList = await getListById(id);
+    const url = `${DATABASE_URL}/lists/${listId}`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    console.log('Lista deletada');
+    return true;
+
+  } catch (error) {
+    logError('DELETAR LISTA', error);
+    throw error;
+  }
+};
+
+export const updateList = async (listId, updates) => {
+  try {
+    logDebug('ATUALIZAR LISTA', { listId, updates });
+
+    const currentList = await getListById(listId);
     
     const updatedList = {
       ...currentList,
@@ -502,7 +518,7 @@ export const updateList = async (id, updates) => {
     
     logDebug('LISTA COMPLETA PARA ATUALIZAR', updatedList);
 
-    const url = `${DATABASE_URL}/lists/${id}`;
+    const url = `${DATABASE_URL}/lists/${listId}`;
     const response = await fetch(url, {
       method: 'PUT',
       headers,
@@ -524,25 +540,27 @@ export const updateList = async (id, updates) => {
   }
 };
 
-export const deleteList = async (id) => {
+export const getBooksFromList = async (listId) => {
   try {
-    logDebug('DELETAR LISTA', { id });
+    logDebug('BUSCAR LIVROS DA LISTA', { listId });
 
-    const url = `${DATABASE_URL}/lists/${id}`;
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers,
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    const list = await getListById(listId);
+    
+    if (!list.bookIds || list.bookIds.length === 0) {
+      console.log('Lista vazia');
+      return [];
     }
 
-    console.log('Lista deletada');
-    return true;
+    const booksPromises = list.bookIds.map(bookId => getBookById(bookId));
+    const books = await Promise.all(booksPromises);
+    
+    const validBooks = books.filter(book => book !== null);
+    
+    console.log(`${validBooks.length} livros encontrados na lista`);
+    return validBooks;
 
   } catch (error) {
-    logError('DELETAR LISTA', error);
+    logError('BUSCAR LIVROS DA LISTA', error);
     throw error;
   }
 };
@@ -551,16 +569,16 @@ export const addBookToList = async (listId, bookId) => {
   try {
     logDebug('ADICIONAR LIVRO À LISTA', { listId, bookId });
 
-    const currentList = await getListById(listId);
+    const list = await getListById(listId);
     
-    if (currentList.bookIds && currentList.bookIds.includes(bookId)) {
-      throw new Error('Livro já está na lista');
+    if (list.bookIds && list.bookIds.includes(bookId)) {
+      throw new Error('Livro já está nesta lista');
     }
 
-    const updatedBookIds = [...(currentList.bookIds || []), bookId];
+    const updatedBookIds = [...(list.bookIds || []), bookId];
     
     const updatedList = {
-      ...currentList,
+      ...list,
       bookIds: updatedBookIds,
       bookCount: updatedBookIds.length,
     };
@@ -580,7 +598,7 @@ export const addBookToList = async (listId, bookId) => {
     }
 
     const data = await response.json();
-    console.log('Livro adicionado à lista:', data);
+    console.log('Livro adicionado à lista');
     return data;
 
   } catch (error) {
@@ -593,12 +611,12 @@ export const removeBookFromList = async (listId, bookId) => {
   try {
     logDebug('REMOVER LIVRO DA LISTA', { listId, bookId });
 
-    const currentList = await getListById(listId);
+    const list = await getListById(listId);
     
-    const updatedBookIds = (currentList.bookIds || []).filter(id => id !== bookId);
+    const updatedBookIds = (list.bookIds || []).filter(id => id !== bookId);
     
     const updatedList = {
-      ...currentList,
+      ...list,
       bookIds: updatedBookIds,
       bookCount: updatedBookIds.length,
     };
@@ -618,34 +636,11 @@ export const removeBookFromList = async (listId, bookId) => {
     }
 
     const data = await response.json();
-    console.log('Livro removido da lista:', data);
+    console.log('Livro removido da lista');
     return data;
 
   } catch (error) {
     logError('REMOVER LIVRO DA LISTA', error);
-    throw error;
-  }
-};
-
-export const getBooksFromList = async (listId) => {
-  try {
-    logDebug('BUSCAR LIVROS DA LISTA', { listId });
-
-    const list = await getListById(listId);
-    
-    if (!list.bookIds || list.bookIds.length === 0) {
-      return [];
-    }
-
-    const books = await Promise.all(
-      list.bookIds.map(bookId => getBookById(bookId))
-    );
-
-    console.log(`${books.length} livros encontrados na lista`);
-    return books;
-
-  } catch (error) {
-    logError('BUSCAR LIVROS DA LISTA', error);
     throw error;
   }
 };
