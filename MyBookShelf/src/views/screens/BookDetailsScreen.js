@@ -1,440 +1,132 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  Image, 
-  ScrollView, 
-  TouchableOpacity, 
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  StatusBar,
-} from 'react-native';
+import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, StatusBar } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { addBook, getBookByIsbn, updateBook } from '../../services/restDbApi';
+import { useDispatch, useSelector } from 'react-redux';
+import { addBook, updateBook, toggleFavorite } from '../../flux/actions'; // Actions Redux
+import colors from '../../theme/colors';
 
 const BookDetailsScreen = ({ route, navigation }) => {
+  const dispatch = useDispatch();
   const { book: initialBook } = route.params || {};
   
-  if (!initialBook) {
-    navigation.goBack();
-    return null;
-  }
+  // Acedemos à lista de livros do Redux
+  const libraryBooks = useSelector(state => state.books.books);
   
   const [book, setBook] = useState(initialBook);
   const [loading, setLoading] = useState(false);
-  const [isInLibrary, setIsInLibrary] = useState(false);
-  const [libraryBookId, setLibraryBookId] = useState(null);
-  const [libraryBookStatus, setLibraryBookStatus] = useState(null);
 
+  // Verifica INSTANTANEAMENTE se o livro está na biblioteca olhando para o Redux
+  const libraryBook = libraryBooks.find(b => 
+    (b.isbn && b.isbn === book.isbn) || 
+    (b._id && b._id === book._id) ||
+    (b.title === book.title && b.author === book.author) // Fallback
+  );
+
+  const isInLibrary = !!libraryBook;
+  const currentStatus = libraryBook ? libraryBook.status : null;
+
+  // Atualiza o estado local 'book' se ele mudar no Redux (reatividade!)
   useEffect(() => {
-    checkIfInLibrary();
-  }, []);
-
-  const checkIfInLibrary = async () => {
-    try {
-      const isbn = book.isbn || book.isbn_13?.[0] || book.key?.split('/').pop();
-      
-      if (!isbn) return;
-
-      const existingBook = await getBookByIsbn(isbn);
-      
-      if (existingBook) {
-        setIsInLibrary(true);
-        setLibraryBookId(existingBook._id);
-        setLibraryBookStatus(existingBook.status);
-        setBook({ ...book, ...existingBook });
-      } else {
-        setIsInLibrary(false);
-        setLibraryBookStatus(null);
-      }
-    } catch (error) {
-      console.error('Erro ao verificar biblioteca:', error);
+    if (libraryBook) {
+      setBook(prev => ({ ...prev, ...libraryBook }));
     }
-  };
+  }, [libraryBook]);
 
-  const getStatusLabel = (status) => {
-    const statusLabels = {
-      'reading': 'A Ler',
-      'read': 'Lido',
-      'wishlist': 'Wishlist',
-      'toRead': 'Para Ler',
-      'unread': 'Para Ler',
-    };
-    return statusLabels[status] || status;
-  };
+  if (!initialBook) { navigation.goBack(); return null; }
 
-  const addToLibrary = async (status, message, navigateTo) => {
-    try {
-      if (isInLibrary && libraryBookStatus === status) {
-        Alert.alert(
-          'Livro já adicionado',
-          `Este livro já está em "${getStatusLabel(status)}"!`,
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
-      if (isInLibrary && libraryBookStatus !== status) {
-        Alert.alert(
-          'Livro já na biblioteca',
-          `Este livro já está em "${getStatusLabel(libraryBookStatus)}". Queres mover para "${getStatusLabel(status)}"?`,
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            {
-              text: 'Sim, mover',
-              onPress: async () => {
-                await performUpdate(status, message, navigateTo);
-              },
-            },
-          ]
-        );
-        return;
-      }
-
-      await performAdd(status, message, navigateTo);
-
-    } catch (error) {
-      console.error('Erro ao adicionar:', error);
-      Alert.alert('Erro', `Não foi possível adicionar o livro.\n\n${error.message}`);
-      setLoading(false);
-    }
-  };
-
-  const performAdd = async (status, message, navigateTo) => {
+  const handleAction = async (actionType, status) => {
     setLoading(true);
-
-    const isbn = book.isbn || book.isbn_13?.[0] || book.key?.split('/').pop() || `temp_${Date.now()}`;
-
-    const bookData = {
-      isbn: isbn,
-      title: book.title || 'Sem título',
-      author: book.author || book.authors?.[0] || book.author_name?.[0] || 'Autor desconhecido',
-      cover: book.cover || book.coverUrl || book.thumbnail || '',
-      description: book.description?.value || book.description || '',
-      publishYear: book.publishedDate?.split('-')[0] || book.publishYear || '',
-      pages: book.pageCount || book.pages || book.number_of_pages_median || 0,
-      rating: book.rating || 0,
-      status: status,
-      isFavorite: book.isFavorite || false,
-      isWishlist: status === 'wishlist',
-      currentPage: 0,
-      current_page: 0,
-      progress: 0,
-      notes: '',
-      categories: Array.isArray(book.categories) ? book.categories.join(', ') : 
-                  Array.isArray(book.subject) ? book.subject.join(', ') : '',
-      language: Array.isArray(book.language) ? book.language[0] : book.language || 'pt',
-      publisher: Array.isArray(book.publisher) ? book.publisher[0] : book.publisher || '',
-    };
-
-    const newBook = await addBook(bookData);
-    setIsInLibrary(true);
-    setLibraryBookId(newBook._id);
-    setLibraryBookStatus(status);
-    setBook({ ...book, ...newBook });
-
-    Alert.alert('Sucesso!', message);
-    setLoading(false);
-
-    if (navigateTo) {
-      setTimeout(() => {
-        navigation.navigate(navigateTo);
-      }, 500);
-    }
-  };
-
-  const performUpdate = async (status, message, navigateTo) => {
-    setLoading(true);
-
-    const updates = {
-      status,
-      isWishlist: status === 'wishlist',
-    };
-
-    if (status === 'reading') {
-      updates.current_page = 0;
-      updates.currentPage = 0;
-      updates.progress = 0;
-    }
-
-    if (status === 'read') {
-      const totalPages = book.pages || book.pageCount || 0;
-      updates.current_page = totalPages;
-      updates.currentPage = totalPages;
-      updates.progress = 100;
-      updates.finished_date = new Date().toISOString();
-    }
-
-    const updated = await updateBook(libraryBookId, updates);
-    
-    setLibraryBookStatus(status);
-    setBook({ ...book, ...updates });
-
-    Alert.alert('Sucesso!', message);
-    setLoading(false);
-
-    if (navigateTo) {
-      setTimeout(() => {
-        navigation.navigate(navigateTo);
-      }, 500);
-    }
-  };
-
-  const handleStartReading = async () => {
-    await addToLibrary('reading', 'Livro adicionado a "A Ler"!', 'ReadingBooks');
-  };
-
-  const handleAddToWishlist = async () => {
-    await addToLibrary('wishlist', 'Livro adicionado à Wishlist!', null);
-  };
-
-  const handleAddToMyLibrary = async () => {
-    await addToLibrary('toRead', 'Livro adicionado à Biblioteca como "Para Ler"!', 'MyLibrary');
-  };
-
-  const handleToggleFavorite = async () => {
     try {
       if (!isInLibrary) {
-        const isbn = book.isbn || book.isbn_13?.[0] || book.key?.split('/').pop() || `temp_${Date.now()}`;
-        
-        const bookData = {
-          isbn: isbn,
-          title: book.title || 'Sem título',
-          author: book.author || book.authors?.[0] || book.author_name?.[0] || 'Autor desconhecido',
-          cover: book.cover || book.coverUrl || book.thumbnail || '',
-          description: book.description?.value || book.description || '',
-          publishYear: book.publishedDate?.split('-')[0] || book.publishYear || '',
-          pages: book.pageCount || book.pages || book.number_of_pages_median || 0,
-          rating: book.rating || 0,
-          status: 'toRead',
-          isFavorite: true,
-          isWishlist: false,
-          currentPage: 0,
-          current_page: 0,
-          progress: 0,
-          notes: '',
-          categories: Array.isArray(book.categories) ? book.categories.join(', ') : 
-                      Array.isArray(book.subject) ? book.subject.join(', ') : '',
-          language: Array.isArray(book.language) ? book.language[0] : book.language || 'pt',
-          publisher: Array.isArray(book.publisher) ? book.publisher[0] : book.publisher || '',
+        // ADICIONAR (Se não existe)
+        const newBookData = {
+          ...book,
+          status: status || 'toRead',
+          isFavorite: actionType === 'favorite' ? true : (book.isFavorite || false),
+          isWishlist: status === 'wishlist',
+          dateAdded: new Date().toISOString()
         };
-
-        setLoading(true);
-        const newBook = await addBook(bookData);
-        
-        setIsInLibrary(true);
-        setLibraryBookId(newBook._id);
-        setLibraryBookStatus('toRead');
-        setBook({ ...book, isFavorite: true, ...newBook });
-        Alert.alert('Sucesso!', 'Livro adicionado aos Favoritos!');
-        setLoading(false);
-
+        await dispatch(addBook(newBookData));
+        if (actionType !== 'favorite') Alert.alert('Sucesso', 'Livro adicionado à biblioteca!');
       } else {
-        const newFavoriteStatus = !book.isFavorite;
-        
-        setLoading(true);
-        const updated = await updateBook(libraryBookId, { isFavorite: newFavoriteStatus });
-        
-        setBook({ ...book, isFavorite: newFavoriteStatus });
-        Alert.alert(
-          newFavoriteStatus ? 'Adicionado!' : 'Removido',
-          newFavoriteStatus ? 'Livro adicionado aos Favoritos!' : 'Livro removido dos Favoritos'
-        );
-        setLoading(false);
+        // ATUALIZAR (Se já existe)
+        if (actionType === 'favorite') {
+          await dispatch(toggleFavorite(libraryBook._id, libraryBook.isFavorite));
+        } else if (status) {
+          if (libraryBook.status === status) {
+            Alert.alert('Info', 'O livro já está nesta estante.');
+          } else {
+            await dispatch(updateBook(libraryBook._id, { status, isWishlist: status === 'wishlist' }));
+            Alert.alert('Sucesso', 'Estado do livro atualizado!');
+          }
+        }
       }
-
+      
+      // Navegação opcional após sucesso
+      if (status === 'reading') setTimeout(() => navigation.navigate('ReadingBooks'), 500);
+      
     } catch (error) {
-      console.error('Erro ao toggle favorito:', error);
-      Alert.alert('Erro', `Não foi possível atualizar favorito.\n${error.message}`);
+      Alert.alert('Erro', 'Ocorreu um erro ao atualizar o livro.');
+      console.error(error);
+    } finally {
       setLoading(false);
     }
   };
 
   const coverUrl = book.cover || book.coverUrl || book.thumbnail || null;
+  const getStatusLabel = (s) => ({ reading: 'A Ler', read: 'Lido', wishlist: 'Wishlist', toRead: 'Para Ler' }[s] || s);
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
-      
-      {}
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => navigation.goBack()}
-        >
-          <MaterialIcons name="arrow-back" size={26} color="#2A5288" />
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <MaterialIcons name="arrow-back" size={26} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.pageTitle}>Detalhes do Livro</Text>
 
-        {}
         <View style={styles.mainCard}>
           <View style={styles.coverContainer}>
-            {coverUrl ? (
-              <Image source={{ uri: coverUrl }} style={styles.cover} />
-            ) : (
-              <View style={styles.noCover}>
-                <MaterialIcons name="menu-book" size={50} color="#CCC" />
-              </View>
-            )}
+            {coverUrl ? <Image source={{ uri: coverUrl }} style={styles.cover} /> : 
+              <View style={styles.noCover}><MaterialIcons name="menu-book" size={50} color={colors.iconGray} /></View>}
           </View>
-
           <View style={styles.infoSection}>
-            <Text style={styles.title} numberOfLines={3}>
-              {book.title || 'Sem título'}
-            </Text>
-            <Text style={styles.author}>
-              {book.author || book.authors?.[0] || book.author_name?.[0] || 'Autor desconhecido'}
-            </Text>
-
-            {(book.pageCount > 0 || book.pages > 0) && (
-              <Text style={styles.pages}>
-                {book.pageCount || book.pages} páginas
-              </Text>
-            )}
-
-            {/* Indicador se já está na biblioteca */}
+            <Text style={styles.title}>{book.title}</Text>
+            <Text style={styles.author}>{book.author || book.authors?.[0]}</Text>
             {isInLibrary && (
               <View style={styles.inLibraryBadge}>
-                <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
-                <Text style={styles.inLibraryText}>
-                  Na biblioteca: {getStatusLabel(libraryBookStatus)}
-                </Text>
+                <MaterialIcons name="check-circle" size={16} color={colors.success} />
+                <Text style={styles.inLibraryText}>Na biblioteca: {getStatusLabel(currentStatus)}</Text>
               </View>
             )}
           </View>
         </View>
 
-        {/* BOTÃO COMEÇAR A LER */}
-        <TouchableOpacity 
-          style={[styles.bigButton, styles.readButton]} 
-          onPress={handleStartReading}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <>
-              <MaterialIcons name="play-arrow" size={20} color="#FFF" />
-              <Text style={styles.bigButtonText}>Começar a Ler!</Text>
-            </>
-          )}
+        <TouchableOpacity style={[styles.bigButton, styles.readButton]} onPress={() => handleAction('update', 'reading')} disabled={loading}>
+          {loading ? <ActivityIndicator color="#fff" /> : 
+            <><MaterialIcons name="play-arrow" size={20} color={colors.white} /><Text style={styles.bigButtonText}>Começar a Ler</Text></>}
         </TouchableOpacity>
 
-        {}
-        <Text style={styles.sectionTitle}>Adicionar a Estantes</Text>
-
         <View style={styles.shelfButtons}>
-          <TouchableOpacity 
-            style={styles.shelfButton} 
-            onPress={handleToggleFavorite}
-            disabled={loading}
-          >
-            <MaterialIcons 
-              name={book.isFavorite ? "favorite" : "favorite-border"} 
-              size={24} 
-              color={book.isFavorite ? "#E91E63" : "#2A5288"} 
-            />
+          <TouchableOpacity style={styles.shelfButton} onPress={() => handleAction('favorite')} disabled={loading}>
+            <MaterialIcons name={book.isFavorite ? "favorite" : "favorite-border"} size={24} color={book.isFavorite ? colors.favorite : colors.primary} />
             <Text style={styles.shelfButtonText}>Favoritos</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.shelfButton} 
-            onPress={handleAddToWishlist}
-            disabled={loading}
-          >
-            <MaterialIcons name="bookmark-border" size={24} color="#2A5288" />
+          <TouchableOpacity style={styles.shelfButton} onPress={() => handleAction('update', 'wishlist')} disabled={loading}>
+            <MaterialIcons name={currentStatus === 'wishlist' ? "bookmark" : "bookmark-border"} size={24} color={colors.primary} />
             <Text style={styles.shelfButtonText}>Wishlist</Text>
           </TouchableOpacity>
         </View>
-
-        {}
-        <TouchableOpacity 
-          style={[styles.bigButton, styles.libraryButton]} 
-          onPress={handleAddToMyLibrary}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <>
-              <MaterialIcons name="library-add" size={20} color="#FFF" />
-              <Text style={styles.bigButtonText}>Adicionar à Minha Biblioteca</Text>
-            </>
-          )}
+        
+        <TouchableOpacity style={[styles.bigButton, styles.libraryButton]} onPress={() => handleAction('update', 'toRead')} disabled={loading}>
+           <MaterialIcons name="library-add" size={20} color={colors.white} />
+           <Text style={styles.bigButtonText}>Adicionar à Biblioteca</Text>
         </TouchableOpacity>
 
-        {}
-        <Text style={styles.sectionTitle}>Sinopse</Text>
-        <View style={styles.synopsisCard}>
-          <Text style={styles.synopsisText}>
-            {book.description?.value || book.description || 'Sem descrição disponível.'}
-          </Text>
-        </View>
-
-        {}
-        <View style={styles.additionalInfo}>
-          {(book.publishedDate || book.publishYear) && (
-            <View style={styles.infoRow}>
-              <MaterialIcons name="calendar-today" size={18} color="#666" />
-              <Text style={styles.infoText}>
-                Publicado em {book.publishedDate?.split('-')[0] || book.publishYear}
-              </Text>
-            </View>
-          )}
-
-          {book.publisher && (
-            <View style={styles.infoRow}>
-              <MaterialIcons name="business" size={18} color="#666" />
-              <Text style={styles.infoText}>
-                {Array.isArray(book.publisher) ? book.publisher[0] : book.publisher}
-              </Text>
-            </View>
-          )}
-
-          {book.language && (
-            <View style={styles.infoRow}>
-              <MaterialIcons name="language" size={18} color="#666" />
-              <Text style={styles.infoText}>
-                {book.language === 'pt' || book.language === 'por' ? 'Português' : 
-                 book.language === 'en' || book.language === 'eng' ? 'Inglês' : book.language}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {}
-        {(Array.isArray(book.categories) && book.categories.length > 0) && (
-          <View style={styles.categoriesCard}>
-            <Text style={styles.categoriesTitle}>Categorias</Text>
-            <View style={styles.categoriesContainer}>
-              {book.categories.slice(0, 6).map((cat, index) => (
-                <View key={index} style={styles.categoryChip}>
-                  <Text style={styles.categoryText}>{cat}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-        
-        {}
-        {(typeof book.categories === 'string' && book.categories.length > 0) && (
-          <View style={styles.categoriesCard}>
-            <Text style={styles.categoriesTitle}>Categorias</Text>
-            <View style={styles.categoriesContainer}>
-              {book.categories.split(',').slice(0, 6).map((cat, index) => (
-                <View key={index} style={styles.categoryChip}>
-                  <Text style={styles.categoryText}>{cat.trim()}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        <View style={{ height: 30 }} />
+        <View style={{height: 50}} />
       </ScrollView>
     </View>
   );

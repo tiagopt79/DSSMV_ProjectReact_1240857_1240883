@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,37 +11,25 @@ import {
   RefreshControl,
   StatusBar,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { getBooks, updateBook, deleteBook } from '../../services/restDbApi';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useDispatch, useSelector } from 'react-redux';
+import { updateBook, deleteBook, fetchBooks } from '../../flux/actions'; // Actions Redux
+import colors from '../../theme/colors';
 
 const WishListScreen = ({ navigation }) => {
-  const [wishlist, setWishlist] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadWishlist();
-  }, []);
-
-  const loadWishlist = async () => {
-    try {
-      setLoading(true);
-      const allBooks = await getBooks();
-      const wishlistBooks = allBooks.filter(book => book.status === 'wishlist');
-      setWishlist(wishlistBooks);
-      console.log(`${wishlistBooks.length} livros na wishlist`);
-    } catch (error) {
-      console.error('Erro ao carregar wishlist:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // 1. Ler Wishlist do Redux (filtra automaticamento quando os dados mudam)
+  const wishlist = useSelector(state => 
+    state.books.books.filter(book => book.status === 'wishlist' || book.isWishlist)
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadWishlist();
+    await dispatch(fetchBooks()); // Recarrega tudo do servidor
     setRefreshing(false);
-  }, []);
+  }, [dispatch]);
 
   const handleRemoveFromWishlist = (book) => {
     Alert.alert(
@@ -52,22 +40,17 @@ const WishListScreen = ({ navigation }) => {
         {
           text: 'Remover',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteBook(book._id);
-              setWishlist(wishlist.filter(b => b._id !== book._id));
-              Alert.alert('Sucesso', 'Livro removido da wishlist');
-            } catch (error) {
-              console.error('Erro ao remover:', error);
-              Alert.alert('Erro', 'Não foi possível remover o livro');
-            }
+          onPress: () => {
+            // Dispara ação de apagar (Redux atualiza a lista sozinho)
+            dispatch(deleteBook(book._id));
+            // Feedback visual opcional, mas o Redux já trata da UI
           },
         },
       ]
     );
   };
 
-  const handleMoveToReading = async (book) => {
+  const handleMoveToReading = (book) => {
     Alert.alert(
       'Começar a Ler',
       `Queres começar a ler "${book.title}"?`,
@@ -75,16 +58,15 @@ const WishListScreen = ({ navigation }) => {
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Sim',
-          onPress: async () => {
-            try {
-              await updateBook(book._id, { status: 'reading', last_read: new Date().toISOString() });
-              setWishlist(wishlist.filter(b => b._id !== book._id));
-              Alert.alert('Sucesso', 'Livro movido para "A Ler"!');
-              navigation.navigate('ReadingBooks');
-            } catch (error) {
-              console.error('Erro ao mover:', error);
-              Alert.alert('Erro', 'Não foi possível mover o livro');
-            }
+          onPress: () => {
+            // Atualiza estado para 'reading'
+            dispatch(updateBook(book._id, { 
+              status: 'reading', 
+              last_read: new Date().toISOString() 
+            }));
+            
+            // Navega para o ecrã de leitura
+            navigation.navigate('ReadingBooks');
           },
         },
       ]
@@ -92,15 +74,18 @@ const WishListScreen = ({ navigation }) => {
   };
 
   const renderBook = ({ item }) => (
-    <View style={wishlistStyles.bookCard}>
-      {}
+    <TouchableOpacity 
+      style={wishlistStyles.bookCard}
+      onPress={() => navigation.navigate('BookDetails', { book: item })}
+      activeOpacity={0.9}
+    >
       <View style={wishlistStyles.bookContent}>
         <View style={wishlistStyles.coverContainer}>
           {item.cover ? (
             <Image source={{ uri: item.cover }} style={wishlistStyles.bookImage} />
           ) : (
             <View style={[wishlistStyles.bookImage, wishlistStyles.noCover]}>
-              <Icon name="book" size={35} color="#2A5288" />
+              <MaterialIcons name="menu-book" size={35} color={colors.primary} />
             </View>
           )}
         </View>
@@ -111,28 +96,29 @@ const WishListScreen = ({ navigation }) => {
             {item.author || 'Autor Desconhecido'}
           </Text>
           
-          {item.pages > 0 && (
+          {(item.pages > 0 || item.pageCount > 0) && (
             <View style={wishlistStyles.pagesRow}>
-              <Icon name="menu-book" size={14} color="#999" />
-              <Text style={wishlistStyles.pagesText}>{item.pages} páginas</Text>
+              <MaterialIcons name="menu-book" size={14} color={colors.textLight} />
+              <Text style={wishlistStyles.pagesText}>{item.pages || item.pageCount} páginas</Text>
             </View>
           )}
 
           {item.isFavorite && (
             <View style={wishlistStyles.favoriteTag}>
-              <Icon name="favorite" size={14} color="#E91E63" />
+              <MaterialIcons name="favorite" size={14} color={colors.favorite} />
               <Text style={wishlistStyles.favoriteText}>Favorito</Text>
             </View>
           )}
         </View>
       </View>
       
+      {/* Botões de Ação Específicos da Wishlist */}
       <View style={wishlistStyles.actionButtons}>
         <TouchableOpacity
           style={wishlistStyles.actionButton}
           onPress={() => handleMoveToReading(item)}
         >
-          <Icon name="play-arrow" size={20} color="#2A5288" />
+          <MaterialIcons name="play-arrow" size={20} color={colors.primary} />
           <Text style={wishlistStyles.actionButtonText}>Começar</Text>
         </TouchableOpacity>
         
@@ -140,49 +126,30 @@ const WishListScreen = ({ navigation }) => {
           style={[wishlistStyles.actionButton, wishlistStyles.removeButton]}
           onPress={() => handleRemoveFromWishlist(item)}
         >
-          <Icon name="delete-outline" size={20} color="#D32F2F" />
+          <MaterialIcons name="delete-outline" size={20} color={colors.error} />
           <Text style={[wishlistStyles.actionButtonText, wishlistStyles.removeText]}>Remover</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
-  if (loading) {
-    return (
-      <View style={wishlistStyles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
-        <View style={wishlistStyles.header}>
-          <TouchableOpacity 
-            style={wishlistStyles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-back" size={26} color="#2A5288" />
-          </TouchableOpacity>
-        </View>
-        <View style={wishlistStyles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2A5288" />
-          <Text style={wishlistStyles.loadingText}>Carregando wishlist...</Text>
-        </View>
-      </View>
-    );
-  }
-
+  // --- EMPTY STATE ---
   if (wishlist.length === 0) {
     return (
       <View style={wishlistStyles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
         <View style={wishlistStyles.header}>
           <TouchableOpacity 
             style={wishlistStyles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-back" size={26} color="#2A5288" />
+            <MaterialIcons name="arrow-back" size={26} color={colors.primary} />
           </TouchableOpacity>
         </View>
         <View style={wishlistStyles.statsCard}>
           <Text style={wishlistStyles.statsTitle}>Lista de Desejos</Text>
           <View style={wishlistStyles.statsRow}>
-            <Icon name="bookmark-border" size={38} color="#2A5288" />
+            <MaterialIcons name="bookmark-border" size={38} color={colors.primary} />
             <View style={wishlistStyles.statsInfo}>
               <Text style={wishlistStyles.statsNumber}>0</Text>
               <Text style={wishlistStyles.statsLabel}>livros na wishlist</Text>
@@ -190,7 +157,7 @@ const WishListScreen = ({ navigation }) => {
           </View>
         </View>
         <View style={wishlistStyles.emptyContainer}>
-          <Icon name="bookmark-border" size={80} color="#AAAAAA" />
+          <MaterialIcons name="bookmark-border" size={80} color={colors.iconGray} />
           <Text style={wishlistStyles.emptyTitle}>Wishlist Vazia</Text>
           <Text style={wishlistStyles.emptyText}>
             Adiciona livros que queres ler no futuro!
@@ -199,7 +166,7 @@ const WishListScreen = ({ navigation }) => {
             style={wishlistStyles.emptyButton}
             onPress={() => navigation.navigate('Search')}
           >
-            <Icon name="search" size={22} color="#FFF" style={{ marginRight: 8 }} />
+            <MaterialIcons name="search" size={22} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={wishlistStyles.emptyButtonText}>Procurar Livros</Text>
           </TouchableOpacity>
         </View>
@@ -207,23 +174,24 @@ const WishListScreen = ({ navigation }) => {
     );
   }
 
+  // --- LISTA NORMAL ---
   return (
     <View style={wishlistStyles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       
       <View style={wishlistStyles.header}>
         <TouchableOpacity 
           style={wishlistStyles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Icon name="arrow-back" size={26} color="#2A5288" />
+          <MaterialIcons name="arrow-back" size={26} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
       <View style={wishlistStyles.statsCard}>
         <Text style={wishlistStyles.statsTitle}>Lista de Desejos</Text>
         <View style={wishlistStyles.statsRow}>
-          <Icon name="bookmark-border" size={38} color="#2A5288" />
+          <MaterialIcons name="bookmark-border" size={38} color={colors.primary} />
           <View style={wishlistStyles.statsInfo}>
             <Text style={wishlistStyles.statsNumber}>{wishlist.length}</Text>
             <Text style={wishlistStyles.statsLabel}>
@@ -243,8 +211,8 @@ const WishListScreen = ({ navigation }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#2A5288']}
-            tintColor="#2A5288"
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
         }
       />

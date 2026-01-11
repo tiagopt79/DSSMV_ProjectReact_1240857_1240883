@@ -1,4 +1,10 @@
-import * as types from '../types';
+import {
+  FETCH_LISTS_SUCCESS,
+  ADD_LIST_SUCCESS,
+  DELETE_LIST_SUCCESS,
+  UPDATE_LIST_SUCCESS
+} from '../actions/listActions'; // Importa os tipos do ficheiro novo
+import { SET_LOADING } from '../types';
 
 const initialState = {
   lists: [],
@@ -8,58 +14,24 @@ const initialState = {
 
 const listsReducer = (state = initialState, action) => {
   switch (action.type) {
-    case types.SET_LISTS:
+    case SET_LOADING:
+      return { ...state, loading: action.payload };
+    case FETCH_LISTS_SUCCESS:
+      return { ...state, lists: action.payload, loading: false };
+    case ADD_LIST_SUCCESS:
+      return { ...state, lists: [...state.lists, action.payload], loading: false };
+    case UPDATE_LIST_SUCCESS:
       return {
         ...state,
-        lists: action.payload,
-        loading: false,
-      };
-
-    case types.CREATE_LIST:
-      return {
-        ...state,
-        lists: [...state.lists, action.payload],
-      };
-
-    case types.UPDATE_LIST:
-      return {
-        ...state,
-        lists: state.lists.map((list) =>
-          list._id === action.payload.listId
-            ? { ...list, ...action.payload.updates }
-            : list
+        lists: state.lists.map(list => 
+          list._id === action.payload._id ? action.payload : list
         ),
       };
-
-    case types.DELETE_LIST:
+    case DELETE_LIST_SUCCESS:
       return {
         ...state,
-        lists: state.lists.filter((list) => list._id !== action.payload),
+        lists: state.lists.filter(list => list._id !== action.payload),
       };
-
-    case types.ADD_BOOK_TO_LIST:
-      return {
-        ...state,
-        lists: state.lists.map((list) =>
-          list._id === action.payload.listId
-            ? { ...list, bookIds: [...list.bookIds, action.payload.bookId] }
-            : list
-        ),
-      };
-
-    case types.REMOVE_BOOK_FROM_LIST:
-      return {
-        ...state,
-        lists: state.lists.map((list) =>
-          list._id === action.payload.listId
-            ? { 
-                ...list, 
-                bookIds: list.bookIds.filter(id => id !== action.payload.bookId) 
-              }
-            : list
-        ),
-      };
-
     default:
       return state;
   }

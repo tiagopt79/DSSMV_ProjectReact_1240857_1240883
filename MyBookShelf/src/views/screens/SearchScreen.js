@@ -1,195 +1,124 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   FlatList, 
   TextInput, 
   StyleSheet, 
-  ActivityIndicator,
-  Text,
-  TouchableOpacity,
-  Alert,
-  StatusBar 
+  ActivityIndicator, 
+  Text, 
+  TouchableOpacity, 
+  StatusBar, 
+  SafeAreaView, 
+  Platform 
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { searchByTitle } from '../../services/googleBooksApi';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useDispatch, useSelector } from 'react-redux';
+import { searchBooks, clearSearchResults } from '../../flux/actions';
 import BookCard from '../components/BookCard';
 import colors from '../../theme/colors';
 
-const SearchScreen = ({ route, navigation }) => {
-  const [searchResults, setSearchResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [hasSearched, setHasSearched] = useState(false);
+const SearchScreen = ({ navigation, route }) => {
+  const dispatch = useDispatch();
+  
+  // Parâmetros que vêm da lista (se existirem)
+  const { fromList, listId, listName, listColor } = route.params || {};
 
-  const fromList = route.params?.fromList || false;
-  const listId = route.params?.listId || null;
-  const listName = route.params?.listName || null;
+  const [query, setQuery] = useState('');
+  const { searchResults, loading, error } = useSelector(state => state.books);
 
-  console.log('📚 SearchScreen - Params recebidos:');
-  console.log('  - fromList:', fromList);
-  console.log('  - listId:', listId);
-  console.log('  - listName:', listName);
-
-  useEffect(() => {
-    handleSearch('Harry Potter');
-  }, []);
-
-  const handleSearch = async (query = searchQuery) => {
-    if (!query.trim()) return;
-    
-    setHasSearched(true);
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const results = await searchByTitle(query);
-      setSearchResults(results);
-    } catch (err) {
-      setError(err.message || 'Erro ao buscar livros');
-      setSearchResults([]);
-    } finally {
-      setLoading(false);
+  const handleSearch = () => {
+    if (query.trim()) {
+      dispatch(searchBooks(query));
     }
   };
 
-  const handleClearSearch = () => {
-    setSearchQuery('');
-    setHasSearched(false);
-    setSearchResults([]);
+  const handleClear = () => {
+    setQuery('');
+    dispatch(clearSearchResults());
   };
 
   const handleBookPress = (book) => {
-    console.log('📖 Livro clicado:', book.title);
-    console.log('📋 fromList:', fromList);
-
-    if (fromList) {
-      console.log('🟢 Navegando para LibraryBookDetailsScreen para adicionar à lista...');
-      
-      navigation.navigate('LibraryBookDetails', { 
-        book: book,
-        fromList: true,
-        listId: listId,
-        listName: listName,
-        isNewBook: true,
-      });
-    } else {
-      console.log('🔵 Navegando para BookDetailsScreen (comportamento normal)');
-      
-      navigation.navigate('BookDetails', { 
-        book: book,
-      });
-    }
+    navigation.navigate('LibraryBookDetails', { 
+      book: book,
+      fromList: fromList, 
+      listId: listId,
+      listName: listName,
+      isNewBook: true 
+    });
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#2A5288" />
       
-      {}
-      <View style={styles.headerContainer}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-back" size={26} color="#FFFFFF" />
+      {/* HEADER CORRIGIDO */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          
+          {/* Botão Voltar */}
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} activeOpacity={0.7}>
+             <MaterialIcons name="arrow-back" size={28} color="#FFF" />
           </TouchableOpacity>
           
-          <View style={styles.headerTextContainer}>
-            <Icon name="search" size={28} color="#FFFFFF" style={styles.headerIcon} />
-            <View>
-              <Text style={styles.headerTitle}>Pesquisar</Text>
-              <Text style={styles.headerSubtitle}>
-                {fromList ? `Adicionar a ${listName}` : 'Encontra o teu próximo livro'}
-              </Text>
-            </View>
+          {/* Caixa de Pesquisa */}
+          <View style={styles.searchBox}>
+            <MaterialIcons name="search" size={24} color="#666" style={{ marginRight: 8 }} />
+            
+            <TextInput 
+              style={styles.input}
+              placeholder={fromList ? `Adicionar a: ${listName}` : "Pesquisar título, autor..."}
+              placeholderTextColor="#999"
+              value={query}
+              onChangeText={setQuery}
+              onSubmitEditing={handleSearch}
+              returnKeyType="search"
+              autoCapitalize="words"
+            />
+            
+            {query.length > 0 && (
+              <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
+                <MaterialIcons name="close" size={20} color="#666" />
+              </TouchableOpacity>
+            )}
           </View>
-          
-          <View style={styles.headerSpace} />
-        </View>
-      </View>
 
-      {}
-      {fromList && listName && (
-        <View style={styles.listBanner}>
-          <Icon name="playlist-add" size={20} color="#FFFFFF" />
-          <Text style={styles.listBannerText}>
-            Toca num livro para adicionar à lista
-          </Text>
         </View>
-      )}
 
-      {}
-      <View style={styles.searchContainer}>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Pesquisar livros por título..." 
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          onSubmitEditing={() => handleSearch()}
-          returnKeyType="search"
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity 
-            style={styles.clearButton}
-            onPress={handleClearSearch}
-          >
-            <Text style={styles.clearButtonText}>✕</Text>
-          </TouchableOpacity>
+        {/* Banner Opcional (Aparece em baixo do header se vier de uma lista) */}
+        {fromList && (
+          <View style={[styles.listBanner, { backgroundColor: listColor || '#27AE60' }]}>
+              <MaterialIcons name="playlist-add" size={16} color="#fff" />
+              <Text style={styles.listBannerText}>Modo de adição: {listName}</Text>
+          </View>
         )}
       </View>
 
-      {}
-      {loading && (
+      {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>A procurar livros...</Text>
+            <ActivityIndicator size="large" color="#2A5288" />
+            <Text style={styles.loadingText}>A procurar livros...</Text>
         </View>
-      )}
-
-      {}
-      {error && !loading && (
-        <View style={styles.centerContainer}>
-          <Text style={styles.errorText}>⚠ {error}</Text>
-          <TouchableOpacity 
-            style={styles.retryButton}
-            onPress={() => handleSearch()}
-          >
-            <Text style={styles.retryButtonText}>Tentar novamente</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {}
-      {!loading && !error && (
-        <>
-          {searchResults.length === 0 && hasSearched ? (
-            <View style={styles.centerContainer}>
-              <Text style={styles.emptyText}>
-                Nenhum livro encontrado para "{searchQuery}"
-              </Text>
-            </View>
-          ) : (
-            <>
-              <Text style={styles.resultsCount}>
-                {searchResults.length} {searchResults.length === 1 ? 'resultado' : 'resultados'}
-              </Text>
-              <FlatList
-                data={searchResults}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <BookCard 
-                    book={item} 
-                    onPress={() => handleBookPress(item)}
-                    hideStatus={true}
-                  />
-                )}
-                contentContainerStyle={styles.listContent}
-              />
-            </>
+      ) : (
+        <FlatList
+          data={searchResults}
+          keyExtractor={(item) => item.id || item.isbn || Math.random().toString()}
+          renderItem={({ item }) => (
+            <BookCard 
+              book={item} 
+              onPress={() => handleBookPress(item)} 
+              hideStatus={true}
+            />
           )}
-        </>
+          contentContainerStyle={{ padding: 16, paddingTop: 20 }}
+          ListEmptyComponent={
+            <View style={styles.centerContainer}>
+               <MaterialIcons name="menu-book" size={60} color="#DDD" />
+               <Text style={styles.emptyText}>
+                 {error ? error : "Escreva o nome de um livro para começar."}
+               </Text>
+            </View>
+          }
+        />
       )}
     </View>
   );
@@ -198,147 +127,78 @@ const SearchScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  headerContainer: {
-    backgroundColor: '#2A5288',
-    paddingBottom: 16,
-    elevation: 8,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    backgroundColor: '#E8D5A8',
   },
   header: {
+    backgroundColor: '#2A5288',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 50,
+    paddingBottom: 15,
+    paddingHorizontal: 15,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    zIndex: 10,
+  },
+  headerContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 8,
   },
   backButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    marginRight: 12,
+    padding: 4,
   },
-  headerTextContainer: {
+  searchBox: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 16,
-  },
-  headerIcon: {
-    marginRight: 12,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.85)',
-  },
-  headerSpace: {
-    width: 48,
-    height: 48,
-  },
-  listBanner: {
-    backgroundColor: '#27AE60',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    elevation: 4,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-  },
-  listBannerText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  searchContainer: {
-    backgroundColor: '#FFF',
-    padding: 12,
-    margin: 16,
+    backgroundColor: '#FFFFFF',
     borderRadius: 25,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 15,
+    height: 46,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    paddingHorizontal: 10,
     color: '#333',
+    paddingVertical: 0,
   },
   clearButton: {
-    padding: 8,
+    padding: 4,
   },
-  clearButtonText: {
-    fontSize: 18,
-    color: '#999',
+  listBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginTop: 12,
+    borderRadius: 8,
+    gap: 6,
+    alignSelf: 'center',
+  },
+  listBannerText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#E53E3E',
-    textAlign: 'center',
-    marginBottom: 16,
+    marginTop: 50,
   },
   emptyText: {
     fontSize: 16,
-    color: colors.textSecondary,
+    color: '#888',
+    marginTop: 10,
     textAlign: 'center',
   },
-  retryButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  resultsCount: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
+  loadingText: {
+    marginTop: 10,
+    color: '#666',
+  }
 });
 
 export default SearchScreen;

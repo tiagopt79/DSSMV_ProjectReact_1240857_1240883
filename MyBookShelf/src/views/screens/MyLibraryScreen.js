@@ -1,57 +1,35 @@
-// src/views/screens/MyLibraryScreen.js - COM FILTRO "PARA LER"
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-  RefreshControl,
-  StatusBar,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { getBooks } from '../../services/restDbApi';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, ActivityIndicator, RefreshControl, StatusBar } from 'react-native';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchBooks } from '../../flux/actions';
+import colors from '../../theme/colors';
 
 const MyLibraryScreen = ({ navigation }) => {
-  const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
+  
+  // Lemos diretamente do Redux!
+  const { books, loading } = useSelector(state => state.books);
+  
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
 
+  // Carrega os livros ao abrir o ecrã
   useEffect(() => {
-    loadBooks();
-  }, []);
-
-  const loadBooks = async () => {
-    try {
-      setLoading(true);
-      const allBooks = await getBooks();
-      setBooks(allBooks);
-      console.log(`${allBooks.length} livros carregados`);
-    } catch (error) {
-      console.error('Erro ao carregar biblioteca:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    dispatch(fetchBooks());
+  }, [dispatch]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadBooks();
+    await dispatch(fetchBooks()); // Força atualização via Redux
     setRefreshing(false);
-  }, []);
+  }, [dispatch]);
 
   const getFilteredBooks = () => {
     if (filter === 'all') return books;
-    // Para o filtro "toRead", aceita tanto 'toRead' quanto 'unread'
-    if (filter === 'toRead') {
-      return books.filter(book => book.status === 'toRead' || book.status === 'unread');
-    }
+    if (filter === 'toRead') return books.filter(book => book.status === 'toRead' || book.status === 'unread');
     return books.filter(book => book.status === filter);
   };
-
   const filteredBooks = getFilteredBooks();
 
   const getCounts = () => ({
@@ -61,13 +39,18 @@ const MyLibraryScreen = ({ navigation }) => {
     wishlist: books.filter(b => b.status === 'wishlist').length,
     read: books.filter(b => b.status === 'read').length,
   });
-
   const counts = getCounts();
+
+  const getFilterLabel = () => {
+    const labels = { reading: 'a ler', toRead: 'para ler', wishlist: 'na wishlist', read: 'lido' };
+    return labels[filter] || '';
+  };
 
   const renderBookCard = ({ item }) => (
     <TouchableOpacity
       style={styles.bookCard}
-      onPress={() => navigation.navigate('LibraryBookDetails', { book: item })}
+      // Navegamos para o ecrã unificado
+      onPress={() => navigation.navigate('BookDetails', { book: item })}
       activeOpacity={0.9}
     >
       <View style={styles.coverContainer}>
@@ -75,21 +58,16 @@ const MyLibraryScreen = ({ navigation }) => {
           <Image source={{ uri: item.cover }} style={styles.cover} />
         ) : (
           <View style={[styles.cover, styles.noCover]}>
-            <Icon name="book" size={40} color="#2A5288" />
+            <MaterialIcons name="menu-book" size={40} color={colors.primary} />
           </View>
         )}
       </View>
 
       <View style={styles.bookInfo}>
-        <Text style={styles.bookTitle} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={styles.bookAuthor} numberOfLines={1}>
-          {item.author || 'Autor Desconhecido'}
-        </Text>
-
-        {item.pages > 0 && (
-          <Text style={styles.bookPages}>{item.pages} páginas</Text>
+        <Text style={styles.bookTitle} numberOfLines={2}>{item.title}</Text>
+        <Text style={styles.bookAuthor} numberOfLines={1}>{item.author || 'Autor Desconhecido'}</Text>
+        {(item.pages > 0 || item.pageCount > 0) && (
+          <Text style={styles.bookPages}>{item.pages || item.pageCount} páginas</Text>
         )}
 
         <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
@@ -102,12 +80,7 @@ const MyLibraryScreen = ({ navigation }) => {
         </View>
 
         {item.isFavorite && (
-          <Icon 
-            name="favorite" 
-            size={20} 
-            color="#E91E63" 
-            style={styles.favoriteIcon} 
-          />
+          <MaterialIcons name="favorite" size={20} color={colors.favorite} style={styles.favoriteIcon} />
         )}
       </View>
     </TouchableOpacity>
@@ -115,53 +88,29 @@ const MyLibraryScreen = ({ navigation }) => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Icon name="library-books" size={80} color="#AAAAAA" />
+      <MaterialIcons name="library-books" size={80} color={colors.iconGray} />
       <Text style={styles.emptyTitle}>
         {filter === 'all' ? 'Biblioteca Vazia' : `Nenhum livro ${getFilterLabel()}`}
       </Text>
       <Text style={styles.emptyText}>
-        {filter === 'all' 
-          ? 'Adicione o seu primeiro livro!' 
-          : 'Tente outro filtro'
-        }
+        {filter === 'all' ? 'Adicione o seu primeiro livro!' : 'Tente outro filtro'}
       </Text>
       {filter === 'all' && (
-        <TouchableOpacity
-          style={styles.emptyButton}
-          onPress={() => navigation.navigate('Search')}
-        >
-          <Icon name="search" size={22} color="#FFF" style={{ marginRight: 8 }} />
+        <TouchableOpacity style={styles.emptyButton} onPress={() => navigation.navigate('Search')}>
+          <MaterialIcons name="search" size={22} color={colors.white} style={{ marginRight: 8 }} />
           <Text style={styles.emptyButtonText}>Pesquisar Livros</Text>
         </TouchableOpacity>
       )}
     </View>
   );
 
-  const getFilterLabel = () => {
-    const labels = {
-      reading: 'a ler',
-      toRead: 'para ler',
-      wishlist: 'na wishlist',
-      read: 'lido',
-    };
-    return labels[filter] || '';
-  };
-
-  if (loading) {
+  if (loading && !refreshing && books.length === 0) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-back" size={26} color="#2A5288" />
-          </TouchableOpacity>
-        </View>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2A5288" />
-          <Text style={styles.loadingText}>Carregando biblioteca...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>A carregar biblioteca...</Text>
         </View>
       </View>
     );
@@ -169,77 +118,36 @@ const MyLibraryScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
-      
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-back" size={26} color="#2A5288" />
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <MaterialIcons name="arrow-back" size={26} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.statsCard}>
         <Text style={styles.statsTitle}>Minha Biblioteca</Text>
         <View style={styles.statsRow}>
-          <Icon name="library-books" size={38} color="#2A5288" />
+          <MaterialIcons name="library-books" size={38} color={colors.primary} />
           <View style={styles.statsInfo}>
             <Text style={styles.statsNumber}>{books.length}</Text>
-            <Text style={styles.statsLabel}>
-              {books.length === 1 ? 'livro total' : 'livros totais'}
-            </Text>
+            <Text style={styles.statsLabel}>{books.length === 1 ? 'livro total' : 'livros totais'}</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.filtersContainer}>
-        <FilterButton
-          label="Todos"
-          count={counts.all}
-          active={filter === 'all'}
-          onPress={() => setFilter('all')}
-        />
-        <FilterButton
-          label="A Ler"
-          count={counts.reading}
-          active={filter === 'reading'}
-          onPress={() => setFilter('reading')}
-        />
-        <FilterButton
-          label="Para Ler"
-          count={counts.toRead}
-          active={filter === 'toRead'}
-          onPress={() => setFilter('toRead')}
-        />
-        <FilterButton
-          label="Wishlist"
-          count={counts.wishlist}
-          active={filter === 'wishlist'}
-          onPress={() => setFilter('wishlist')}
-        />
-        <FilterButton
-          label="Lidos"
-          count={counts.read}
-          active={filter === 'read'}
-          onPress={() => setFilter('read')}
-        />
+        <FilterButton label="Todos" count={counts.all} active={filter === 'all'} onPress={() => setFilter('all')} />
+        <FilterButton label="A Ler" count={counts.reading} active={filter === 'reading'} onPress={() => setFilter('reading')} />
+        <FilterButton label="Para Ler" count={counts.toRead} active={filter === 'toRead'} onPress={() => setFilter('toRead')} />
+        <FilterButton label="Wishlist" count={counts.wishlist} active={filter === 'wishlist'} onPress={() => setFilter('wishlist')} />
+        <FilterButton label="Lidos" count={counts.read} active={filter === 'read'} onPress={() => setFilter('read')} />
       </View>
 
       <FlatList
-        data={filteredBooks}
-        renderItem={renderBookCard}
-        keyExtractor={(item) => item._id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#2A5288']}
-            tintColor="#2A5288"
-          />
-        }
+        data={filteredBooks} renderItem={renderBookCard} keyExtractor={(item) => item._id || item.isbn}
+        contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
         ListEmptyComponent={renderEmpty}
       />
     </View>
@@ -247,18 +155,11 @@ const MyLibraryScreen = ({ navigation }) => {
 };
 
 const FilterButton = ({ label, count, active, onPress }) => (
-  <TouchableOpacity
-    style={[styles.filterButton, active && styles.filterButtonActive]}
-    onPress={onPress}
-  >
-    <Text style={[styles.filterText, active && styles.filterTextActive]}>
-      {label}
-    </Text>
+  <TouchableOpacity style={[styles.filterButton, active && styles.filterButtonActive]} onPress={onPress}>
+    <Text style={[styles.filterText, active && styles.filterTextActive]}>{label}</Text>
     {count > 0 && (
       <View style={[styles.filterBadge, active && styles.filterBadgeActive]}>
-        <Text style={[styles.filterBadgeText, active && styles.filterBadgeTextActive]}>
-          {count}
-        </Text>
+        <Text style={[styles.filterBadgeText, active && styles.filterBadgeTextActive]}>{count}</Text>
       </View>
     )}
   </TouchableOpacity>

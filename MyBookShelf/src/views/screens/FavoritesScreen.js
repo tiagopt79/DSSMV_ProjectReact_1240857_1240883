@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -7,44 +7,21 @@ import {
   TouchableOpacity,
   Image,
   Alert,
-  ActivityIndicator,
-  RefreshControl,
   StatusBar,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { getBooks, updateBook } from '../../services/restDbApi';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useDispatch, useSelector } from 'react-redux';
+import { toggleFavorite } from '../../flux/actions'; // Importa a ação do Redux
+import colors from '../../theme/colors';
 
 const FavoritesScreen = ({ navigation }) => {
-  const [favorites, setFavorites] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const dispatch = useDispatch();
 
-  useEffect(() => {
-    loadFavorites();
-  }, []);
-
-  const loadFavorites = async () => {
-    try {
-      console.log('[FavoritesScreen] Carregando favoritos...');
-      setLoading(true);
-      const allBooks = await getBooks();
-      console.log('[FavoritesScreen] Total de livros:', allBooks.length);
-      const favoriteBooks = allBooks.filter(book => book.isFavorite === true);
-      console.log('[FavoritesScreen] Favoritos encontrados:', favoriteBooks.length);
-      setFavorites(favoriteBooks);
-    } catch (error) {
-      console.error('[FavoritesScreen] Erro ao carregar favoritos:', error);
-      Alert.alert('Erro', 'Não foi possível carregar os favoritos');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadFavorites();
-    setRefreshing(false);
-  }, []);
+  // 1. Ler os livros do Redux e filtrar apenas os favoritos
+  // A reatividade é automática: se tirares um favorito noutro ecrã, ele desaparece daqui logo.
+  const favorites = useSelector(state => 
+    state.books.books.filter(book => book.isFavorite === true)
+  );
 
   const handleRemoveFavorite = (book) => {
     Alert.alert(
@@ -55,122 +32,86 @@ const FavoritesScreen = ({ navigation }) => {
         {
           text: 'Remover',
           style: 'destructive',
-          onPress: async () => {
-            try {
-              await updateBook(book._id, { isFavorite: false });
-              setFavorites(favorites.filter(b => b._id !== book._id));
-              Alert.alert('Sucesso', 'Livro removido dos favoritos');
-            } catch (error) {
-              console.error('Erro ao remover:', error);
-              Alert.alert('Erro', 'Não foi possível remover dos favoritos');
-            }
+          onPress: () => {
+            // 2. Dispara a ação para atualizar no Redux (e na API)
+            dispatch(toggleFavorite(book._id, true)); 
           },
         },
       ]
     );
   };
 
-  const renderBook = ({ item }) => {
-    console.log('[FavoritesScreen] Renderizando livro:', item.title);
-    
-    return (
-      <TouchableOpacity 
-        style={styles.bookCard}
-        onPress={() => {
-          console.log('[FavoritesScreen] Navegando para LibraryBookDetails com viewOnly: true');
-          navigation.navigate('LibraryBookDetails', { 
-            book: item,
-            viewOnly: true
-          });
-        }}
-        activeOpacity={0.9}
-      >
-        <View style={styles.coverContainer}>
-          {item.cover ? (
-            <Image source={{ uri: item.cover }} style={styles.bookImage} />
-          ) : (
-            <View style={[styles.bookImage, styles.noCover]}>
-              <Icon name="book" size={35} color="#2A5288" />
-            </View>
-          )}
-        </View>
-        
-        <View style={styles.bookInfo}>
-          <Text style={styles.bookTitle} numberOfLines={2}>{item.title}</Text>
-          <Text style={styles.bookAuthor} numberOfLines={1}>
-            {item.author || 'Autor Desconhecido'}
-          </Text>
-          
-          <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
-            <Text style={styles.statusText}>
-              {item.status === 'reading' ? '📖 Lendo' :
-               item.status === 'wishlist' ? '💭 Wishlist' :
-               item.status === 'read' ? '✅ Lido' : '📚 Não Lido'}
-            </Text>
+  const renderBook = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.bookCard}
+      onPress={() => navigation.navigate('BookDetails', { book: item })}
+      activeOpacity={0.9}
+    >
+      <View style={styles.coverContainer}>
+        {item.cover ? (
+          <Image source={{ uri: item.cover }} style={styles.bookImage} />
+        ) : (
+          <View style={[styles.bookImage, styles.noCover]}>
+            <MaterialIcons name="menu-book" size={35} color={colors.primary} />
           </View>
-
-          {item.pages > 0 && (
-            <View style={styles.pagesRow}>
-              <Icon name="menu-book" size={14} color="#999" />
-              <Text style={styles.pagesText}>{item.pages} páginas</Text>
-            </View>
-          )}
-        </View>
-        
-        <TouchableOpacity
-          style={styles.favoriteButton}
-          onPress={() => handleRemoveFavorite(item)}
-        >
-          <Icon name="favorite" size={28} color="#E91E63" />
-        </TouchableOpacity>
-      </TouchableOpacity>
-    );
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-back" size={26} color="#2A5288" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2A5288" />
-          <Text style={styles.loadingText}>Carregando favoritos...</Text>
-        </View>
+        )}
       </View>
-    );
-  }
+      
+      <View style={styles.bookInfo}>
+        <Text style={styles.bookTitle} numberOfLines={2}>{item.title}</Text>
+        <Text style={styles.bookAuthor} numberOfLines={1}>
+          {item.author || 'Autor Desconhecido'}
+        </Text>
+        
+        <View style={[styles.statusBadge, styles[`status_${item.status}`]]}>
+          <Text style={styles.statusText}>
+            {item.status === 'reading' ? '📖 A Ler' :
+             item.status === 'wishlist' ? '💭 Wishlist' :
+             item.status === 'read' ? '✅ Lido' : '📚 Para Ler'}
+          </Text>
+        </View>
 
+        {(item.pages > 0 || item.pageCount > 0) && (
+          <View style={styles.pagesRow}>
+            <MaterialIcons name="menu-book" size={14} color={colors.textLight} />
+            <Text style={styles.pagesText}>{item.pages || item.pageCount} páginas</Text>
+          </View>
+        )}
+      </View>
+      
+      <TouchableOpacity
+        style={styles.favoriteButton}
+        onPress={() => handleRemoveFavorite(item)}
+      >
+        <MaterialIcons name="favorite" size={28} color={colors.favorite} />
+      </TouchableOpacity>
+    </TouchableOpacity>
+  );
+
+  // --- EMPTY STATE ---
   if (favorites.length === 0) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Icon name="arrow-back" size={26} color="#2A5288" />
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <MaterialIcons name="arrow-back" size={26} color={colors.primary} />
           </TouchableOpacity>
         </View>
+        
         <View style={styles.statsCard}>
           <Text style={styles.statsTitle}>Favoritos</Text>
           <View style={styles.statsRow}>
-            <Icon name="favorite" size={38} color="#E91E63" />
+            <MaterialIcons name="favorite" size={38} color={colors.favorite} />
             <View style={styles.statsInfo}>
               <Text style={styles.statsNumber}>0</Text>
               <Text style={styles.statsLabel}>favoritos</Text>
             </View>
           </View>
         </View>
+
         <View style={styles.emptyContainer}>
-          <Icon name="favorite-border" size={80} color="#AAAAAA" />
+          <MaterialIcons name="favorite-border" size={80} color={colors.iconGray} />
           <Text style={styles.emptyTitle}>Nenhum Favorito</Text>
           <Text style={styles.emptyText}>
             Adiciona livros aos teus favoritos para os veres aqui!
@@ -179,7 +120,7 @@ const FavoritesScreen = ({ navigation }) => {
             style={styles.emptyButton}
             onPress={() => navigation.navigate('MyLibrary')}
           >
-            <Icon name="library-books" size={22} color="#FFF" style={{ marginRight: 8 }} />
+            <MaterialIcons name="library-books" size={22} color={colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.emptyButtonText}>Ir para Biblioteca</Text>
           </TouchableOpacity>
         </View>
@@ -187,23 +128,21 @@ const FavoritesScreen = ({ navigation }) => {
     );
   }
 
+  // --- LISTA COM DADOS ---
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Icon name="arrow-back" size={26} color="#2A5288" />
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <MaterialIcons name="arrow-back" size={26} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.statsCard}>
         <Text style={styles.statsTitle}>Favoritos</Text>
         <View style={styles.statsRow}>
-          <Icon name="favorite" size={38} color="#E91E63" />
+          <MaterialIcons name="favorite" size={38} color={colors.favorite} />
           <View style={styles.statsInfo}>
             <Text style={styles.statsNumber}>{favorites.length}</Text>
             <Text style={styles.statsLabel}>
@@ -219,14 +158,6 @@ const FavoritesScreen = ({ navigation }) => {
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#2A5288']}
-            tintColor="#2A5288"
-          />
-        }
       />
     </View>
   );

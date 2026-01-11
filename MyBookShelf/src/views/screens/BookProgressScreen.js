@@ -1,292 +1,160 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  Alert,
-  ActivityIndicator,
-  StatusBar,
-  KeyboardAvoidingView,
-  Platform,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, Image,
+  TextInput, Alert, ActivityIndicator, StatusBar, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { updateBookProgress, getReadingSessions, addReadingSession, getBookById, updateBook } from '../../services/restDbApi';
+// AQUI ESTÁ A CORREÇÃO: Importamos como MaterialIcons
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useDispatch, useSelector } from 'react-redux';
+import { updateReadingProgress } from '../../flux/actions';
+import colors from '../../theme/colors';
 
 const BookProgressScreen = ({ navigation, route }) => {
+  const dispatch = useDispatch();
   const { book: initialBook } = route.params;
-  
-  const [book, setBook] = useState(initialBook);
+
+  const book = useSelector(state => 
+    state.books.books.find(b => b._id === initialBook._id) || initialBook
+  );
+
+  const [history, setHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [currentPage, setCurrentPage] = useState('');
   const [notes, setNotes] = useState('');
-  const [history, setHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Importar API só para ler histórico
+  const { getReadingSessions } = require('../../services/restDbApi');
+
   useEffect(() => {
-    loadBookData();
     loadHistory();
   }, []);
 
-  const loadBookData = async () => {
-    try {
-      const updatedBook = await getBookById(initialBook._id);
-      setBook(updatedBook);
-    } catch (error) {
-      console.error('Erro ao carregar livro:', error);
-    }
-  };
-
   const loadHistory = async () => {
     try {
-      setLoading(true);
-      const sessions = await getReadingSessions(initialBook._id);
+      setLoadingHistory(true);
+      const sessions = await getReadingSessions(book._id);
       setHistory(sessions);
     } catch (error) {
-      console.error('Erro ao carregar histórico:', error);
+      console.error(error);
     } finally {
-      setLoading(false);
+      setLoadingHistory(false);
     }
   };
 
+  const totalPages = book.pages || book.pageCount || 0;
+  const current = book.current_page || book.currentPage || 0;
+
   const calculateProgress = () => {
-    const totalPages = book.pageCount || book.pages || 0;
-    const current = book.currentPage || book.current_page || 0;
-    
-    if (!totalPages || totalPages === 0) return 0;
+    if (!totalPages) return 0;
     return Math.min(Math.round((current / totalPages) * 100), 100);
   };
 
   const handleSaveProgress = async () => {
     const newPage = parseInt(currentPage);
-    const totalPages = book.pageCount || book.pages || 0;
-    const lastPage = book.currentPage || book.current_page || 0;
 
     if (!currentPage || isNaN(newPage)) {
-      Alert.alert('Erro', 'Por favor, insere uma página válida');
+      Alert.alert('Erro', 'Insira uma página válida');
       return;
     }
-
-    if (newPage < 0 || newPage > totalPages) {
-      Alert.alert('Erro', `A página deve estar entre 0 e ${totalPages}`);
+    if (newPage > totalPages) {
+      Alert.alert('Erro', `O total de páginas é ${totalPages}`);
       return;
     }
-
-    if (newPage < lastPage) {
-      Alert.alert(
-        'Aviso', 
-        `Não podes retroceder! A última página registada foi ${lastPage}. Insere uma página igual ou superior.`
-      );
-      return;
-    }
-
-    if (newPage === lastPage) {
-      Alert.alert('Aviso', 'Estás na mesma página');
+    if (newPage < current) {
+      Alert.alert('Aviso', 'Não podes retroceder na leitura!');
       return;
     }
 
     try {
       setSaving(true);
+      await dispatch(updateReadingProgress(book._id, newPage, totalPages, notes));
 
-      const updatedBook = await updateBookProgress(initialBook._id, newPage);
+      Alert.alert('Sucesso', 'Progresso guardado!');
+      setCurrentPage('');
+      setNotes('');
+      loadHistory();
       
-      const session = {
-        bookId: initialBook._id,
-        date: new Date().toISOString(),
-        startPage: lastPage,
-        endPage: newPage,
-        pagesRead: newPage - lastPage,
-        duration: 0,
-        notes: notes || '',
-      };
-
-      await addReadingSession(session);
-
       if (newPage >= totalPages) {
-        console.log('📚 Livro completado! Marcando como lido...');
-        
-        await updateBook(initialBook._id, {
-          status: 'read',
-          current_page: totalPages,
-          progress: 100,
-          finished_date: new Date().toISOString(),
-        });
-
-
-        const finalBook = await getBookById(initialBook._id);
-        setBook(finalBook);
-
-        Alert.alert(
-          '🎉 Parabéns!',
-          `Terminaste "${book.title}"! O livro foi marcado como lido.`,
-          [
-            {
-              text: 'Voltar',
-              onPress: () => navigation.goBack(),
-            },
-          ]
-        );
-      } else {
-        setBook(updatedBook);
-        
-        Alert.alert('Sucesso', 'Progresso guardado!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              setCurrentPage('');
-              setNotes('');
-              loadHistory();
-            },
-          },
-        ]);
+        navigation.goBack();
       }
+
     } catch (error) {
-      console.error('Erro ao guardar progresso:', error);
-      Alert.alert('Erro', 'Não foi possível guardar o progresso');
+      Alert.alert('Erro', 'Falha ao guardar progresso');
     } finally {
       setSaving(false);
     }
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${day}/${month}/${year} às ${hours}:${minutes}`;
-  };
-
-  const renderHistoryItem = (session, index) => (
-    <View key={index} style={styles.historyItem}>
-      <View style={styles.historyHeader}>
-        <Icon name="book" size={20} color="#254E70" />
-        <Text style={styles.historyDate}>{formatDate(session.date)}</Text>
-      </View>
-      <Text style={styles.historyPages}>
-        {session.startPage} → {session.endPage} páginas ({session.pagesRead} lidas)
-      </Text>
-      {session.notes && (
-        <Text style={styles.historyNotes}>📝 {session.notes}</Text>
-      )}
-    </View>
-  );
-
-  const totalPages = book.pageCount || book.pages || 0;
-  const currentPageNum = book.currentPage || book.current_page || 0;
-
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="#254E70" />
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Icon name="arrow-back" size={24} color="#FFFFFF" />
+          {/* USO CORRETO: MaterialIcons */}
+          <MaterialIcons name="arrow-back" size={24} color={colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Detalhes do Livro</Text>
-        <View style={styles.backButton} />
+        <Text style={styles.headerTitle}>Atualizar Leitura</Text>
+        <View style={{width: 40}} />
       </View>
 
-      <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
-        {}
+      <ScrollView style={styles.content}>
         <View style={styles.bookInfoCard}>
-          <Image
-            source={{ uri: book.thumbnail || book.cover || 'https://via.placeholder.com/128x196?text=Sem+Capa' }}
-            style={styles.bookCover}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: book.cover || book.thumbnail }} style={styles.bookCover} />
           <View style={styles.bookDetails}>
             <Text style={styles.bookTitle}>{book.title}</Text>
-            <Text style={styles.bookAuthor}>{book.authors?.join(', ') || book.author || 'Autor desconhecido'}</Text>
-            <Text style={styles.bookPages}>{totalPages || '?'} páginas</Text>
+            <Text style={styles.bookPages}>{current} / {totalPages} páginas</Text>
           </View>
         </View>
 
-        {}
-        <View style={styles.progressCard}>
-          <Text style={styles.sectionTitle}>Progresso de Leitura</Text>
-          <View style={styles.progressBarContainer}>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${calculateProgress()}%` }]} />
-            </View>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Progresso Total</Text>
+          <View style={styles.progressBarBg}>
+             <View style={[styles.progressBarFill, { width: `${calculateProgress()}%` }]} />
           </View>
-          <Text style={styles.progressPercentage}>{calculateProgress()}%</Text>
-          <Text style={styles.progressPages}>
-            {currentPageNum} de {totalPages || '?'} páginas lidas
-          </Text>
+          <Text style={styles.percentText}>{calculateProgress()}% Lido</Text>
         </View>
 
-        {}
-        <View style={styles.updateCard}>
-          <Text style={styles.sectionTitle}>Atualizar Progresso</Text>
-          
-          <Text style={styles.helperText}>
-            Última página: {currentPageNum} | Total: {totalPages}
-          </Text>
-
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Estou na página...</Text>
           <TextInput
             style={styles.input}
-            placeholder={`Página atual (mínimo: ${currentPageNum})`}
-            placeholderTextColor="#999999"
+            placeholder={current.toString()}
             keyboardType="numeric"
             value={currentPage}
             onChangeText={setCurrentPage}
           />
-
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Notas (opcional)"
-            placeholderTextColor="#999999"
+            placeholder="Notas sobre a leitura (opcional)"
             multiline
-            numberOfLines={4}
-            textAlignVertical="top"
+            numberOfLines={3}
             value={notes}
             onChangeText={setNotes}
           />
-
-          <TouchableOpacity
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          <TouchableOpacity 
+            style={styles.saveButton} 
             onPress={handleSaveProgress}
             disabled={saving}
           >
-            {saving ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveButtonText}>Guardar Progresso</Text>
-            )}
+             {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveButtonText}>Guardar</Text>}
           </TouchableOpacity>
         </View>
 
-        {}
-        <View style={styles.historyCard}>
-          <View style={styles.historyTitleContainer}>
-            <Icon name="history" size={24} color="#254E70" />
-            <Text style={styles.sectionTitle}>Histórico de Leitura</Text>
-          </View>
-
-          {loading ? (
-            <ActivityIndicator size="large" color="#254E70" style={styles.loader} />
-          ) : history.length === 0 ? (
-            <View style={styles.emptyHistory}>
-              <Text style={styles.emptyHistoryIcon}>📖</Text>
-              <Text style={styles.emptyHistoryText}>Nenhum histórico ainda</Text>
-              <Text style={styles.emptyHistorySubtext}>
-                Guarda o teu progresso para começar
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.historyList}>
-              {history.map((session, index) => renderHistoryItem(session, index))}
-            </View>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Histórico</Text>
+          {loadingHistory ? <ActivityIndicator color={colors.primary} /> : (
+             history.map((h, i) => (
+               <View key={i} style={styles.historyItem}>
+                 <Text style={styles.historyDate}>{new Date(h.date).toLocaleDateString()}</Text>
+                 <Text>Pág {h.startPage} ➔ {h.endPage}</Text>
+                 {h.notes ? <Text style={styles.historyNote}>"{h.notes}"</Text> : null}
+               </View>
+             ))
           )}
         </View>
+        <View style={{height: 50}} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

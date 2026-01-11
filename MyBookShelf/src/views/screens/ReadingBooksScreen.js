@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,57 +6,28 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  RefreshControl,
   Alert,
-  ActivityIndicator,
   StatusBar,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import { getBooks, updateBook } from '../../services/restDbApi';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useDispatch, useSelector } from 'react-redux';
+import { updateBook } from '../../flux/actions'; // Action do Redux
+import colors from '../../theme/colors';
 
 const ReadingBooksScreen = ({ navigation }) => {
-  const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const dispatch = useDispatch();
 
-    useEffect(() => {
-    loadBooks();
-  }, [loadBooks]);
-
-  const loadBooks = useCallback(async () => {
-    try {
-      setLoading(true);
-      const allBooks = await getBooks();
-      const readingBooks = allBooks.filter(book => book.status === 'reading');
-      setBooks(readingBooks);
-    } catch (error) {
-      console.error('Erro ao carregar livros:', error);
-      Alert.alert('Erro', 'Não foi possível carregar os livros.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadBooks();
-    setRefreshing(false);
-  }, [loadBooks]);
+  // 1. Filtra livros com status 'reading' diretamente do Redux
+  const books = useSelector(state => 
+    state.books.books.filter(book => book.status === 'reading')
+  );
 
   const handleUpdateProgress = (book) => {
-    const bookData = {
-      _id: book._id,
-      title: book.title,
-      authors: [book.author || 'Autor desconhecido'],
-      thumbnail: book.cover,
-      pageCount: book.pages || 0,
-      currentPage: book.current_page || 0,
-    };
-    
-    navigation.navigate('BookProgress', { book: bookData });
+    // Passamos o livro para o ecrã de progresso
+    navigation.navigate('BookProgress', { book });
   };
 
-  const handleFinishBook = async (book) => {
+  const handleFinishBook = (book) => {
     Alert.alert(
       '✓ Terminar Livro',
       `Marcar "${book.title}" como lido?`,
@@ -64,26 +35,16 @@ const ReadingBooksScreen = ({ navigation }) => {
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Sim',
-          onPress: async () => {
-            try {
-              const updatedBook = {
-                ...book,
-                status: 'read',
-                current_page: book.pages,
-                progress: 100,
-                finished_date: new Date().toISOString(),
-              };
-
-              await updateBook(book._id, updatedBook);
-              
-              const updatedBooks = books.filter(b => b._id !== book._id);
-              setBooks(updatedBooks);
-              
-              Alert.alert('🎉 Parabéns!', `Terminou "${book.title}"!`);
-            } catch (error) {
-              console.error('Erro:', error);
-              Alert.alert('Erro', 'Não foi possível marcar como lido.');
-            }
+          onPress: () => {
+            // 2. Dispara a action para atualizar no Redux (e API)
+            // O Redux remove-o automaticamente desta lista porque o status muda
+            dispatch(updateBook(book._id, {
+              status: 'read',
+              current_page: book.pages || book.pageCount,
+              progress: 100,
+              finished_date: new Date().toISOString(),
+            }));
+            Alert.alert('🎉 Parabéns!', `Terminou "${book.title}"!`);
           },
         },
       ]
@@ -91,54 +52,45 @@ const ReadingBooksScreen = ({ navigation }) => {
   };
 
   const getProgressColor = (progress) => {
-    if (progress < 30) return '#E74C3C';
-    if (progress < 70) return '#F39C12';
-    return '#27AE60';
+    if (progress < 30) return colors.error; // Vermelho
+    if (progress < 70) return colors.warning; // Laranja
+    return colors.success; // Verde
   };
 
   const renderBookCard = ({ item }) => {
-    const currentPage = item.current_page || 0;
-    const totalPages = item.pages || 0;
+    const currentPage = item.current_page || item.currentPage || 0;
+    const totalPages = item.pages || item.pageCount || 0;
     
     const progress = (totalPages > 0 && currentPage > 0) 
       ? Math.round((currentPage / totalPages) * 100) 
       : 0;
     
-    const progressColor = getProgressColor(progress);
-
     return (
       <TouchableOpacity
         style={styles.bookCard}
         onPress={() => handleUpdateProgress(item)}
         activeOpacity={0.95}
       >
-        {}
         <View style={styles.coverContainer}>
           {item.cover ? (
             <Image source={{ uri: item.cover }} style={styles.cover} />
           ) : (
             <View style={[styles.cover, styles.noCover]}>
-              <Icon name="book" size={45} color="#2A5288" />
+              <MaterialIcons name="menu-book" size={45} color={colors.primary} />
             </View>
           )}
         </View>
 
-        {}
         <View style={styles.bookInfo}>
-          <Text style={styles.bookTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <Text style={styles.bookAuthor} numberOfLines={1}>
-            {item.author || 'Autor Desconhecido'}
-          </Text>
+          <Text style={styles.bookTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={styles.bookAuthor} numberOfLines={1}>{item.author || 'Autor Desconhecido'}</Text>
 
-          {}
           <View style={styles.progressSection}>
             <View style={styles.progressBarBg}>
               <View 
                 style={[
                   styles.progressBarFill, 
-                  { width: `${progress}%`, backgroundColor: progressColor }
+                  { width: `${progress}%`, backgroundColor: getProgressColor(progress) }
                 ]} 
               />
             </View>
@@ -147,21 +99,14 @@ const ReadingBooksScreen = ({ navigation }) => {
             </Text>
           </View>
 
-          {}
           <View style={styles.actionsRow}>
-            <TouchableOpacity
-              style={styles.updateBtn}
-              onPress={() => handleUpdateProgress(item)}
-            >
-              <Icon name="edit" size={18} color="#2A5288" />
+            <TouchableOpacity style={styles.updateBtn} onPress={() => handleUpdateProgress(item)}>
+              <MaterialIcons name="edit" size={18} color={colors.primary} />
               <Text style={styles.updateBtnText}>Atualizar</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.finishBtn}
-              onPress={() => handleFinishBook(item)}
-            >
-              <Icon name="check-circle" size={18} color="#27AE60" />
+            <TouchableOpacity style={styles.finishBtn} onPress={() => handleFinishBook(item)}>
+              <MaterialIcons name="check-circle" size={18} color={colors.success} />
               <Text style={styles.finishBtnText}>Terminar</Text>
             </TouchableOpacity>
           </View>
@@ -170,61 +115,20 @@ const ReadingBooksScreen = ({ navigation }) => {
     );
   };
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Icon name="menu-book" size={90} color="#AAAAAA" />
-      <Text style={styles.emptyTitle}>Nenhum Livro em Leitura</Text>
-      <Text style={styles.emptyText}>
-        Adicione livros à sua biblioteca e comece a ler!
-      </Text>
-      <TouchableOpacity
-        style={styles.emptyBtn}
-        onPress={() => navigation.navigate('MyLibrary')}
-      >
-        <Icon name="library-books" size={22} color="#fff" style={{ marginRight: 8 }} />
-        <Text style={styles.emptyBtnText}>Ir para Biblioteca</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.navigate('Home')}
-          >
-            <Icon name="arrow-back" size={26} color="#2A5288" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2A5288" />
-          <Text style={styles.loadingText}>Carregando...</Text>
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       
-      {}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Icon name="arrow-back" size={26} color="#2A5288" />
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <MaterialIcons name="arrow-back" size={26} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
-      {}
       <View style={styles.statsCard}>
         <Text style={styles.statsTitle}>Livros em Leitura</Text>
         <View style={styles.statsRow}>
-          <Icon name="menu-book" size={38} color="#2A5288" />
+          <MaterialIcons name="menu-book" size={38} color={colors.primary} />
           <View style={styles.statsInfo}>
             <Text style={styles.statsNumber}>{books.length}</Text>
             <Text style={styles.statsLabel}>Livros a ler de momento</Text>
@@ -232,22 +136,22 @@ const ReadingBooksScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {}
       <FlatList
         data={books}
         renderItem={renderBookCard}
         keyExtractor={(item) => item._id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#2A5288']}
-            tintColor="#2A5288"
-          />
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <MaterialIcons name="menu-book" size={90} color={colors.iconGray} />
+            <Text style={styles.emptyTitle}>Nenhum Livro em Leitura</Text>
+            <Text style={styles.emptyText}>Adicione livros à sua biblioteca e comece a ler!</Text>
+            <TouchableOpacity style={styles.emptyBtn} onPress={() => navigation.navigate('MyLibrary')}>
+              <Text style={styles.emptyBtnText}>Ir para Biblioteca</Text>
+            </TouchableOpacity>
+          </View>
         }
-        ListEmptyComponent={renderEmptyState}
       />
     </View>
   );

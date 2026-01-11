@@ -9,6 +9,10 @@ import {
 import colors from '../../theme/colors';
 
 const BookCard = ({ book, onPress, hideStatus = false }) => {
+  
+  // Função auxiliar para garantir que o status existe antes de tentar mostrar
+  const shouldShowStatus = !hideStatus && book.status && book.status !== '';
+
   return (
     <TouchableOpacity 
       style={styles.card} 
@@ -16,9 +20,9 @@ const BookCard = ({ book, onPress, hideStatus = false }) => {
       activeOpacity={0.7}
     >
       <View style={styles.coverContainer}>
-        {book.coverUrl || book.cover ? (
+        {book.coverUrl || book.cover || book.thumbnail ? (
           <Image 
-            source={{ uri: book.coverUrl || book.cover }} 
+            source={{ uri: book.coverUrl || book.cover || book.thumbnail }} 
             style={styles.cover}
             resizeMode="cover"
           />
@@ -35,21 +39,32 @@ const BookCard = ({ book, onPress, hideStatus = false }) => {
         </Text>
         
         <Text style={styles.author} numberOfLines={1}>
-          {book.author || 'Autor desconhecido'}
+          {book.author || book.authors?.join(', ') || 'Autor desconhecido'}
         </Text>
         
-        {book.publishYear && book.publishYear !== '' && (
-          <Text style={styles.year}>{book.publishYear}</Text>
+        {/* Verifica ano de várias fontes possíveis */}
+        {(book.publishYear || book.publishedDate) && (
+          <Text style={styles.year}>
+            {book.publishYear || (book.publishedDate ? book.publishedDate.substring(0,4) : '')}
+          </Text>
         )}
         
-        {book.pages > 0 && (
-          <Text style={styles.pages}>{book.pages} páginas</Text>
+        {(book.pages > 0 || book.pageCount > 0) && (
+          <Text style={styles.pages}>
+            {book.pages || book.pageCount} páginas
+          </Text>
         )}
         
-        {}
-        {!hideStatus && book.status && (
-          <View style={[styles.statusBadge, styles[`status_${book.status}`]]}>
-            <Text style={styles.statusText}>
+        {/* LÓGICA DO STATUS: Só mostra se não estiver escondido E se tiver status */}
+        {shouldShowStatus && (
+          <View style={[
+            styles.statusBadge, 
+            styles[`status_${book.status}`] || styles.status_default
+          ]}>
+            <Text style={[
+              styles.statusText, 
+              styles[`text_${book.status}`] || styles.text_default
+            ]}>
               {getStatusLabel(book.status)}
             </Text>
           </View>
@@ -95,12 +110,12 @@ const styles = StyleSheet.create({
   noCover: {
     width: '100%',
     height: '100%',
-    backgroundColor: colors.secondary,
+    backgroundColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
   },
   noCoverText: {
-    fontSize: 40,
+    fontSize: 30,
   },
   infoContainer: {
     flex: 1,
@@ -110,22 +125,22 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.text,
+    color: '#333',
     marginBottom: 4,
   },
   author: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: '#666',
     marginBottom: 4,
   },
   year: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: '#888',
     marginBottom: 2,
   },
   pages: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: '#888',
   },
   statusBadge: {
     alignSelf: 'flex-start',
@@ -134,28 +149,22 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginTop: 8,
   },
-  status_wishlist: {
-    backgroundColor: '#E6F3FF',
-  },
-  status_reading: {
-    backgroundColor: '#FFF4E6',
-  },
-  status_read: {
-    backgroundColor: '#E6F9F0',
-  },
-  status_finished: {
-    backgroundColor: '#E6F9F0',
-  },
-  status_abandoned: {
-    backgroundColor: '#F5F5F5',
-  },
-  status_unread: {
-    backgroundColor: '#F5F5F5',
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
+  // Cores de Fundo
+  status_wishlist: { backgroundColor: '#E3F2FD' }, // Azul claro
+  status_reading: { backgroundColor: '#FFF3E0' }, // Laranja claro
+  status_read: { backgroundColor: '#E8F5E9' },    // Verde claro
+  status_finished: { backgroundColor: '#E8F5E9' }, // Verde claro
+  status_abandoned: { backgroundColor: '#FFEBEE' },// Vermelho claro
+  status_default: { backgroundColor: '#F5F5F5' },  // Cinza
+  
+  // Cores de Texto (para contraste)
+  statusText: { fontSize: 11, fontWeight: '600' },
+  text_wishlist: { color: '#1976D2' },
+  text_reading: { color: '#E65100' },
+  text_read: { color: '#2E7D32' },
+  text_finished: { color: '#2E7D32' },
+  text_abandoned: { color: '#C62828' },
+  text_default: { color: '#616161' },
 });
 
 export default BookCard;

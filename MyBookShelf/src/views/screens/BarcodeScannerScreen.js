@@ -7,16 +7,28 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Vibration,
+  StatusBar
 } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { searchByISBN } from '../../services/googleBooksApi';
-import { addBook } from '../../services/restDbApi';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons'; // Correção do ícone
+// Imports do Redux
+import { useDispatch, useSelector } from 'react-redux';
+import { addBookFromISBN, addBookToList } from '../../flux/actions';
 import colors from '../../theme/colors';
 
-const BarcodeScannerScreen = ({ navigation }) => {
+const BarcodeScannerScreen = ({ navigation, route }) => {
+  const dispatch = useDispatch();
+  // Recebe parâmetros se viemos de uma lista
+  const { fromList, listId, listName } = route.params || {};
+  
   const [loading, setLoading] = useState(false);
   const webViewRef = useRef(null);
 
+  // Aceder à biblioteca para verificar duplicados localmente
+  const libraryBooks = useSelector(state => state.books.books);
+
+  // O teu HTML da câmara (Mantido intacto)
   const cameraHTML = `
     <!DOCTYPE html>
     <html>
@@ -24,224 +36,54 @@ const BarcodeScannerScreen = ({ navigation }) => {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest"></script>
       <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
-        body {
-          background: #000;
-          font-family: Arial, sans-serif;
-          overflow: hidden;
-        }
-        #camera-container {
-          position: relative;
-          width: 100vw;
-          height: 100vh;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-        video {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-        #scan-overlay {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%);
-          width: 280px;
-          height: 180px;
-          border: 3px solid #4CAF50;
-          border-radius: 12px;
-          box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
-          pointer-events: none;
-        }
-        .corner {
-          position: absolute;
-          width: 30px;
-          height: 30px;
-          border: 4px solid #4CAF50;
-        }
-        .corner.top-left {
-          top: -2px;
-          left: -2px;
-          border-right: none;
-          border-bottom: none;
-        }
-        .corner.top-right {
-          top: -2px;
-          right: -2px;
-          border-left: none;
-          border-bottom: none;
-        }
-        .corner.bottom-left {
-          bottom: -2px;
-          left: -2px;
-          border-right: none;
-          border-top: none;
-        }
-        .corner.bottom-right {
-          bottom: -2px;
-          right: -2px;
-          border-left: none;
-          border-top: none;
-        }
-        #instructions {
-          position: absolute;
-          bottom: 100px;
-          left: 0;
-          right: 0;
-          text-align: center;
-          color: white;
-          font-size: 16px;
-          text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-          padding: 0 20px;
-        }
-        #result {
-          position: absolute;
-          top: 20px;
-          left: 20px;
-          right: 20px;
-          background: rgba(76, 175, 80, 0.9);
-          color: white;
-          padding: 15px;
-          border-radius: 8px;
-          display: none;
-          font-size: 14px;
-          text-align: center;
-        }
-        #error {
-          position: absolute;
-          top: 20px;
-          left: 20px;
-          right: 20px;
-          background: rgba(244, 67, 54, 0.9);
-          color: white;
-          padding: 15px;
-          border-radius: 8px;
-          display: none;
-          font-size: 14px;
-          text-align: center;
-        }
-        .scanning-line {
-          position: absolute;
-          width: 100%;
-          height: 2px;
-          background: linear-gradient(90deg, transparent, #4CAF50, transparent);
-          animation: scan 2s linear infinite;
-        }
-        @keyframes scan {
-          0% { top: 0; }
-          50% { top: 100%; }
-          100% { top: 0; }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; font-family: Arial, sans-serif; overflow: hidden; }
+        #camera-container { position: relative; width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        #scan-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 180px; border: 3px solid #4CAF50; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6); pointer-events: none; }
+        .scanning-line { position: absolute; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #4CAF50, transparent); animation: scan 2s linear infinite; }
+        @keyframes scan { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
+        #instructions { position: absolute; bottom: 100px; left: 0; right: 0; text-align: center; color: white; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); padding: 0 20px; }
       </style>
     </head>
     <body>
       <div id="camera-container">
         <video id="video" autoplay playsinline></video>
-        
-        <div id="scan-overlay">
-          <div class="corner top-left"></div>
-          <div class="corner top-right"></div>
-          <div class="corner bottom-left"></div>
-          <div class="corner bottom-right"></div>
-          <div class="scanning-line"></div>
-        </div>
-        
-        <div id="instructions">
-          Posicione o código de barras dentro da área verde
-        </div>
-        
-        <div id="result"></div>
-        <div id="error"></div>
+        <div id="scan-overlay"><div class="scanning-line"></div></div>
+        <div id="instructions">Posicione o código de barras na área verde</div>
       </div>
-
       <script>
         const video = document.getElementById('video');
-        const resultDiv = document.getElementById('result');
-        const errorDiv = document.getElementById('error');
         const codeReader = new ZXing.BrowserMultiFormatReader();
         let isScanning = false;
 
-        // Iniciar câmara
         async function startCamera() {
           try {
-            const constraints = {
-              video: {
-                facingMode: 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-              }
-            };
-
+            const constraints = { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } };
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
-            
-            video.onloadedmetadata = () => {
-              video.play();
-              startScanning();
-            };
+            video.onloadedmetadata = () => { video.play(); startScanning(); };
           } catch (err) {
-            console.error('Erro ao aceder à câmara:', err);
-            showError('Erro ao aceder à câmara. Verifique as permissões.');
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'error',
-              message: 'Camera permission denied'
-            }));
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: 'Camera permission denied' }));
           }
         }
 
         function startScanning() {
           if (isScanning) return;
           isScanning = true;
-
           codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
             if (result) {
               const code = result.text;
-              console.log('Código detectado:', code);
-              
               if (/^\\d{10}$/.test(code) || /^\\d{13}$/.test(code)) {
-                showResult('ISBN detectado: ' + code);
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'barcode',
-                  data: code
-                }));
-                isScanning = false;
+                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'barcode', data: code }));
+                isScanning = false; 
+                // Pausa breve para não ler o mesmo código 10 vezes
+                setTimeout(() => { isScanning = true; }, 3000);
               }
-            }
-            
-            if (err && err.name !== 'NotFoundException') {
-              console.error('Erro na leitura:', err);
             }
           });
         }
-
-        function showResult(message) {
-          resultDiv.textContent = message;
-          resultDiv.style.display = 'block';
-          setTimeout(() => {
-            resultDiv.style.display = 'none';
-          }, 3000);
-        }
-
-        function showError(message) {
-          errorDiv.textContent = message;
-          errorDiv.style.display = 'block';
-          setTimeout(() => {
-            errorDiv.style.display = 'none';
-          }, 5000);
-        }
-
         startCamera();
-
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'ready'
-        }));
       </script>
     </body>
     </html>
@@ -251,22 +93,17 @@ const BarcodeScannerScreen = ({ navigation }) => {
     try {
       const message = JSON.parse(event.nativeEvent.data);
       
-      if (message.type === 'ready') {
-        console.log('Câmara pronta!');
-      }
-      
       if (message.type === 'error') {
-        Alert.alert(
-          'Erro de Permissão',
-          'Não foi possível aceder à câmara. Verifique as permissões nas configurações do dispositivo.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
+        Alert.alert('Erro', 'Permissão de câmara negada.');
       }
       
       if (message.type === 'barcode') {
         const isbn = message.data;
-        console.log('ISBN recebido:', isbn);
-        handleISBNDetected(isbn);
+        // Evita processar múltiplos scans se já estivermos a carregar
+        if (!loading) {
+          Vibration.vibrate(100);
+          handleISBNDetected(isbn);
+        }
       }
     } catch (error) {
       console.error('Erro ao processar mensagem:', error);
@@ -277,60 +114,85 @@ const BarcodeScannerScreen = ({ navigation }) => {
     setLoading(true);
     
     try {
-      const bookData = await searchByISBN(isbn);
-      
-      if (bookData) {
-        await addBook({
-          ...bookData,
-          status: 'to_read',
-          added_date: new Date().toISOString(),
-        });
-        
-        Alert.alert(
-          'Livro Adicionado! ✅',
-          `"${bookData.title}" foi adicionado à sua biblioteca.`,
-          [
-            {
-              text: 'Ver Detalhes',
-              onPress: () => navigation.navigate('BookDetails', { book: bookData }),
-            },
-            {
-              text: 'Adicionar Outro',
-              onPress: () => setLoading(false),
-            },
-          ]
-        );
-      } else {
-        Alert.alert(
-          'Livro Não Encontrado',
-          'Não foi possível encontrar informações sobre este ISBN.',
-          [{ text: 'Tentar Novamente', onPress: () => setLoading(false) }]
-        );
+      // 1. Verificar se já existe na biblioteca (Redux)
+      const existingBook = libraryBooks.find(b => 
+        (b.isbn === isbn) || (b.isbn_13 && b.isbn_13.includes(isbn))
+      );
+
+      if (existingBook) {
+        if (fromList && listId) {
+          // Se viemos de uma lista, adicionamos o livro existente a essa lista
+          await dispatch(addBookToList(listId, existingBook._id));
+          Alert.alert(
+            'Adicionado à Lista', 
+            `"${existingBook.title}" já estava na tua biblioteca e foi adicionado à lista "${listName}".`,
+            [{ text: 'OK', onPress: () => navigation.goBack() }]
+          );
+        } else {
+          Alert.alert(
+            'Já existe!',
+            `O livro "${existingBook.title}" já está na tua biblioteca.`,
+            [
+              { text: 'OK', onPress: () => setLoading(false) }, // Permite continuar a scanear
+              { text: 'Ver Detalhes', onPress: () => navigation.navigate('BookDetails', { book: existingBook }) }
+            ]
+          );
+        }
+        return;
       }
+
+      // 2. Se não existe, buscar e criar (Redux Action)
+      const newBook = await dispatch(addBookFromISBN(isbn));
+      
+      if (newBook) {
+        if (fromList && listId) {
+          await dispatch(addBookToList(listId, newBook._id));
+          Alert.alert('Sucesso', 'Livro adicionado à biblioteca e à lista!');
+        } else {
+          Alert.alert(
+            'Sucesso! 📚',
+            `"${newBook.title}" foi adicionado.`,
+            [
+              { text: 'Scanear Outro', onPress: () => setLoading(false) },
+              { text: 'Ver Detalhes', onPress: () => navigation.replace('BookDetails', { book: newBook }) }
+            ]
+          );
+        }
+      } else {
+        // Se a action não retornar livro (erro ou não encontrado)
+        throw new Error('Livro não encontrado');
+      }
+
     } catch (error) {
-      console.error('Erro ao buscar livro:', error);
+      console.error('Erro scanner:', error);
       Alert.alert(
-        'Erro',
-        'Ocorreu um erro ao buscar o livro. Tente novamente.',
+        'Não Encontrado',
+        'Não conseguimos encontrar informações para este código.',
         [{ text: 'OK', onPress: () => setLoading(false) }]
       );
+    } finally {
+      // Se não navegámos para outro ecrã, paramos o loading
+      // setLoading(false) é chamado nos botões de alerta para manter o loading visível durante o alerta
     }
   };
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backButtonText}>← Voltar</Text>
+          <MaterialIcons name="arrow-back" size={24} color="#fff" />
+          <Text style={styles.backButtonText}> Voltar</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Escanear Código de Barras</Text>
+        <Text style={styles.headerTitle}>Scan ISBN</Text>
       </View>
 
-      {/* WebView com câmara */}
+      {/* WebView */}
       <View style={styles.cameraContainer}>
         <WebView
           ref={webViewRef}
@@ -339,17 +201,17 @@ const BarcodeScannerScreen = ({ navigation }) => {
           javaScriptEnabled={true}
           domStorageEnabled={true}
           mediaPlaybackRequiresUserAction={false}
-          allowsInlineMediaPlayback={true}
+          allowsInlineMediaPlayback={true} // Importante para Android
           onMessage={handleWebViewMessage}
         />
       </View>
 
-      {/* Loading overlay */}
+      {/* Loading Overlay */}
       {loading && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Buscando livro...</Text>
+            <Text style={styles.loadingText}>A processar livro...</Text>
           </View>
         </View>
       )}

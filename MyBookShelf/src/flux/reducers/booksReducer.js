@@ -1,33 +1,26 @@
 import * as types from '../types';
 
 const initialState = {
-  books: [],
-  searchResults: [],
+  books: [],           // A tua biblioteca (Minha Biblioteca)
+  searchResults: [],   // Resultados da pesquisa (SearchScreen)
   loading: false,
   error: null,
 };
 
 const booksReducer = (state = initialState, action) => {
   switch (action.type) {
-    case types.SET_BOOKS:
-      return {
-        ...state,
-        books: action.payload,
-        loading: false,
-      };
+    case types.SET_LOADING:
+      return { ...state, loading: action.payload };
 
-    case types.SET_SEARCH_RESULTS:
-      return {
-        ...state,
-        searchResults: action.payload,
-        loading: false,
-      };
+    case types.SET_ERROR:
+      return { ...state, error: action.payload, loading: false };
+
+    // --- BIBLIOTECA ---
+    case types.SET_BOOKS:
+      return { ...state, books: action.payload, loading: false };
 
     case types.ADD_BOOK:
-      return {
-        ...state,
-        books: [...state.books, action.payload],
-      };
+      return { ...state, books: [...state.books, action.payload], loading: false };
 
     case types.UPDATE_BOOK:
       return {
@@ -39,7 +32,7 @@ const booksReducer = (state = initialState, action) => {
         ),
       };
 
-    case types.REMOVE_BOOK:
+    case types.DELETE_BOOK:
       return {
         ...state,
         books: state.books.filter((book) => book._id !== action.payload),
@@ -55,18 +48,12 @@ const booksReducer = (state = initialState, action) => {
         ),
       };
 
-    case types.SET_LOADING:
-      return {
-        ...state,
-        loading: action.payload,
-      };
+    // --- PESQUISA ---
+    case types.SET_SEARCH_RESULTS:
+      return { ...state, searchResults: action.payload, loading: false };
 
-    case types.SET_ERROR:
-      return {
-        ...state,
-        error: action.payload,
-        loading: false,
-      };
+    case types.CLEAR_SEARCH_RESULTS:
+      return { ...state, searchResults: [] };
 
     default:
       return state;

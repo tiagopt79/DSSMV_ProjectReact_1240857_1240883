@@ -1,42 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  SafeAreaView,
-  StatusBar 
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
+  SafeAreaView, StatusBar 
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchBooks, fetchLists } from '../../flux/actions';
 import AddBookModal from '../components/AddBookModal';
 import colors from '../../theme/colors';
 
 const HomeScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
   const [modalVisible, setModalVisible] = useState(false);
 
-  const handleAddBookPress = () => {
-    setModalVisible(true);
-  };
+  // 1. Ler dados do Redux para mostrar estatísticas em tempo real
+  const { books } = useSelector(state => state.books);
+  const { lists } = useSelector(state => state.lists);
 
-  const handleSearchPress = () => {
-    setModalVisible(false);
-    navigation.navigate('Search');
-  };
+  // Cálculos dinâmicos
+  const readingCount = books.filter(b => b.status === 'reading').length;
+  const wishlistCount = books.filter(b => b.status === 'wishlist' || b.isWishlist).length;
+  const favoritesCount = books.filter(b => b.isFavorite).length;
+  const totalBooks = books.length;
 
-  const handleScanPress = () => {
-    setModalVisible(false);
-    navigation.navigate('BarcodeScanner');
-  };
+  // 2. Carregar dados iniciais assim que a App abre
+  useEffect(() => {
+    dispatch(fetchBooks());
+    dispatch(fetchLists());
+  }, [dispatch]);
+
+  const handleAddBookPress = () => setModalVisible(true);
+  const handleSearchPress = () => { setModalVisible(false); navigation.navigate('Search'); };
+  const handleScanPress = () => { setModalVisible(false); navigation.navigate('BarcodeScanner'); };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#2A5288" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       
-      {}
+      {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>MyBookShelf</Text>
-        <Text style={styles.headerSubtitle}>Que livro você leu hoje?</Text>
+        <Text style={styles.headerSubtitle}>
+          {readingCount > 0 
+            ? `Estás a ler ${readingCount} ${readingCount === 1 ? 'livro' : 'livros'}!` 
+            : 'Que livro vais ler hoje?'}
+        </Text>
       </View>
 
       <ScrollView 
@@ -44,50 +52,51 @@ const HomeScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-       {}
-      <AddBookModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onSearchPress={handleSearchPress}
-        onScanPress={handleScanPress}
-      />
-      
-        {}
+        {/* ADD BOOK CARD */}
         <TouchableOpacity 
           style={styles.addBookCard}
           onPress={handleAddBookPress}
           activeOpacity={0.8}
         >
           <View style={styles.iconCircle}>
-            <Icon name="add-circle" size={32} color="#fff" />
+            <MaterialIcons name="add" size={32} color="#fff" />
           </View>
           <View style={styles.addBookText}>
             <Text style={styles.addBookTitle}>Adicionar um livro</Text>
-            <Text style={styles.addBookSubtitle}>Estas a ler algum livro?</Text>
+            <Text style={styles.addBookSubtitle}>Scan ISBN ou Pesquisa</Text>
           </View>
         </TouchableOpacity>
 
-        {}
+        {/* READING NOW BUTTON (Wide) */}
         <TouchableOpacity 
           style={styles.wideButton}
           onPress={() => navigation.navigate('ReadingBooks')}
           activeOpacity={0.8}
         >
-          <Icon name="menu-book" size={28} color="#000000" style={styles.wideButtonIcon} />
-          <Text style={styles.wideButtonText}>Livros em leitura</Text>
+          <View style={styles.row}>
+            <MaterialIcons name="menu-book" size={28} color={colors.textPrimary} style={styles.wideButtonIcon} />
+            <View>
+              <Text style={styles.wideButtonText}>Livros em leitura</Text>
+              <Text style={styles.wideButtonSubText}>
+                {readingCount} {readingCount === 1 ? 'livro' : 'livros'} em progresso
+              </Text>
+            </View>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={colors.textLight} />
         </TouchableOpacity>
 
-        {}
+        {/* GRID MENU */}
         <View style={styles.menuGrid}>
           <TouchableOpacity
             style={styles.menuCard}
             onPress={() => navigation.navigate('WishList')}
             activeOpacity={0.8}
           >
-            <View style={[styles.menuIconCircle, { backgroundColor: colors.secondary + '25' }]}>
-              <Icon name="favorite" size={38} color={colors.secondary} />
+            <View style={[styles.menuIconCircle, { backgroundColor: colors.secondary + '20' }]}>
+              <MaterialIcons name="bookmark-border" size={32} color={colors.secondary} />
             </View>
-            <Text style={styles.menuCardText}>Lista de Desejos</Text>
+            <Text style={styles.menuNumber}>{wishlistCount}</Text>
+            <Text style={styles.menuCardText}>Wishlist</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
@@ -95,33 +104,64 @@ const HomeScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('Favorites')}
             activeOpacity={0.8}
           >
-            <View style={[styles.menuIconCircle, { backgroundColor: colors.secondary + '25' }]}>
-              <Icon name="bookmark" size={38} color={colors.secondary} />
+            <View style={[styles.menuIconCircle, { backgroundColor: colors.favorite + '20' }]}>
+              <MaterialIcons name="favorite" size={32} color={colors.favorite} />
             </View>
+            <Text style={styles.menuNumber}>{favoritesCount}</Text>
             <Text style={styles.menuCardText}>Favoritos</Text>
           </TouchableOpacity>
         </View>
 
-        {}
+        {/* LIBRARY BUTTON */}
         <TouchableOpacity 
           style={styles.wideButton}
           onPress={() => navigation.navigate('MyLibrary')}
           activeOpacity={0.8}
         >
-          <Icon name="library-books" size={28} color="#000000" style={styles.wideButtonIcon} />
-          <Text style={styles.wideButtonText}>Minha Biblioteca</Text>
+           <View style={styles.row}>
+            <MaterialIcons name="library-books" size={28} color={colors.textPrimary} style={styles.wideButtonIcon} />
+            <View>
+              <Text style={styles.wideButtonText}>Minha Biblioteca</Text>
+              <Text style={styles.wideButtonSubText}>{totalBooks} livros guardados</Text>
+            </View>
+          </View>
+          <MaterialIcons name="chevron-right" size={24} color={colors.textLight} />
         </TouchableOpacity>
 
-        {}
+        {/* LISTS BUTTON - CORRIGIDO */}
         <TouchableOpacity 
           style={styles.wideButton}
           onPress={() => navigation.navigate('MyLists')}
           activeOpacity={0.8}
         >
-          <Icon name="list" size={28} color="#000000" style={styles.wideButtonIcon} />
-          <Text style={styles.wideButtonText}>Minhas Listas</Text>
+          {/* 1. Ícone da esquerda */}
+          <MaterialIcons 
+            name="list" 
+            size={28} 
+            color={colors.textPrimary || '#000'} 
+            style={styles.wideButtonIcon} 
+          />
+          
+          {/* 2. Texto (Com flex: 1 para ocupar o espaço e empurrar a seta) */}
+          <View style={{ flex: 1, justifyContent: 'center' }}>
+            <Text style={styles.wideButtonText}>Minhas Listas</Text>
+          </View>
+
+          {/* 3. Ícone da direita (Seta) */}
+          <MaterialIcons 
+            name="chevron-right" 
+            size={24} 
+            color={colors.textLight || '#666'} 
+          />
         </TouchableOpacity>
       </ScrollView>
+
+      <AddBookModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSearchPress={handleSearchPress}
+        onScanPress={handleScanPress}
+      />
     </SafeAreaView>
   );
 };
