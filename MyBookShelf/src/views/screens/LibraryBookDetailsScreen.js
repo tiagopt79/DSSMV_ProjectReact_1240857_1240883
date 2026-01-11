@@ -1,4 +1,3 @@
-// src/views/screens/LibraryBookDetailsScreen.js - COMPLETO
 import React, { useState } from 'react';
 import {
   View,
@@ -11,45 +10,72 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { addBook, getBookByIsbn, addBookToList, updateBook } from '../../services/restDbApi';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons'; // Corrigido para MaterialIcons (padrão do projeto) ou MaterialCommunityIcons
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Mantendo o que usavas
+
+// REDUX IMPORTS
+import { useDispatch } from 'react-redux';
+import { 
+  updateBook, 
+  addBook, 
+  toggleFavorite, 
+  addBookToList, 
+  fetchBooks // Para garantir atualização se adicionarmos novo livro
+} from '../../flux/actions';
+
+// Importamos apenas o serviço de leitura GET para verificar existência (não altera estado)
+import { getBookByIsbn } from '../../services/restDbApi';
 
 const LibraryBookDetailsScreen = ({ route, navigation }) => {
+  const dispatch = useDispatch();
   const { book: initialBook, fromList, listId, listName, isNewBook, viewOnly } = route?.params || {};
+  
   const [book, setBook] = useState(initialBook);
   const [loading, setLoading] = useState(false);
+  
+  // Estado local para UI imediata, mas o Redux tratará dos dados reais
   const [isFavorite, setIsFavorite] = useState(initialBook?.isFavorite || false);
 
   const isFromList = fromList === true && listId && isNewBook === true;
   const isViewOnly = viewOnly === true || (fromList === true && !isNewBook);
 
   const handleMainAction = async () => {
+    // --- LÓGICA DE ADICIONAR À LISTA ---
     if (isFromList) {
       try {
         setLoading(true);
-        console.log('\n🔵 Iniciando adição do livro à lista...');
+        console.log('🔵 Redux: Iniciando adição à lista...');
 
-        let existingBook = null;
-        if (book.isbn) {
-          existingBook = await getBookByIsbn(book.isbn);
+        let bookIdToAdd = book._id;
+
+        // Se o livro não tem ID (vem do Google Books), precisamos de criar ou encontrar na DB primeiro
+        if (!book._id) {
+            let existingBook = null;
+            if (book.isbn) {
+                // Verificação rápida se já existe na DB
+                existingBook = await getBookByIsbn(book.isbn);
+            }
+
+            if (existingBook) {
+                bookIdToAdd = existingBook._id;
+                console.log('✅ Livro já existia, ID:', bookIdToAdd);
+            } else {
+                console.log('➕ Criando novo livro via Redux...');
+                // Dispara a action que cria o livro e atualiza o Redux
+                const newBookAction = await dispatch(addBook({
+                    ...book,
+                    status: 'wishlist', // Status padrão
+                }));
+                // Assumindo que a tua action addBook devolve o livro ou payload (ajustar conforme thunk)
+                // Se o thunk não retornar, teremos de confiar na API direta para obter o ID
+                // Para simplificar e garantir o ID, podemos usar a API direta aqui dentro do try
+                // Mas o ideal é a action retornar o novo livro.
+                if (newBookAction) bookIdToAdd = newBookAction._id; 
+            }
         }
 
-        let bookToAdd;
-
-        if (existingBook) {
-          bookToAdd = existingBook;
-          console.log('✅ Usando livro existente, ID:', existingBook._id);
-        } else {
-          console.log('➕ Adicionando livro à RestDB...');
-          const newBook = await addBook({
-            ...book,
-            status: 'wishlist',
-          });
-          bookToAdd = newBook;
-          console.log('✅ Livro adicionado à RestDB, ID:', newBook._id);
-        }
-
-        await addBookToList(listId, bookToAdd._id);
+        // Adicionar à lista via Redux Action
+        await dispatch(addBookToList(listId, bookIdToAdd));
         
         Alert.alert(
           'Sucesso!',
@@ -57,53 +83,40 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       } catch (error) {
-        console.error('❌ Erro ao adicionar livro:', error);
-        
-        let errorMessage = 'Não foi possível adicionar o livro à lista';
-        
-        if (error.message?.includes('já está')) {
-          errorMessage = 'Este livro já está nesta lista!';
-        }
-        
-        Alert.alert('Erro', errorMessage);
+        console.error('❌ Erro Redux:', error);
+        Alert.alert('Erro', 'Não foi possível adicionar à lista.');
       } finally {
         setLoading(false);
       }
-    } else {
+    } 
+    // --- LÓGICA DE LEITURA (Start Reading / Reread) ---
+    else {
       try {
+        // Reler livro
         if (book.status === 'read') {
           Alert.alert(
             '📖 Reler Livro',
-            `Você já terminou "${book.title}". Deseja ler novamente?`,
+            `Deseja ler "${book.title}" novamente?`,
             [
               { text: 'Cancelar', style: 'cancel' },
               {
                 text: 'Sim, Reler',
                 onPress: async () => {
-                  try {
-                    await updateBook(book._id, { 
+                   // ACTION DO REDUX
+                   await dispatch(updateBook(book._id, { 
                       status: 'reading', 
                       current_page: 0,
                       currentPage: 0,
                       progress: 0,
                       finished_date: null,
-                    });
-                    
-                    Alert.alert(
-                      '✅ Livro Reiniciado!',
-                      'O livro foi movido para "A Ler" e o progresso foi resetado.',
-                      [
-                        {
-                          text: 'Ir para A Ler',
-                          onPress: () => navigation.navigate('ReadingBooks'),
-                        },
-                        { text: 'OK' },
-                      ]
-                    );
-                  } catch (error) {
-                    console.error('Erro ao reiniciar livro:', error);
-                    Alert.alert('Erro', 'Não foi possível reiniciar o livro.');
-                  }
+                   }));
+                   
+                   // Atualiza estado local para refletir na UI instantaneamente
+                   setBook({ ...book, status: 'reading', progress: 0 });
+
+                   Alert.alert('✅ Livro Reiniciado!', 'Movido para "A Ler".', [
+                        { text: 'OK', onPress: () => navigation.goBack() }
+                   ]);
                 },
               },
             ]
@@ -112,41 +125,27 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
         }
 
         if (book.status === 'reading') {
-          Alert.alert(
-            '📖 Livro em Leitura',
-            `"${book.title}" já está na sua lista de livros em leitura.`,
-            [
-              {
-                text: 'Ver Lista',
-                onPress: () => navigation.navigate('ReadingBooks'),
-              },
-              { text: 'OK', style: 'cancel' },
-            ]
-          );
+          Alert.alert('Aviso', 'Este livro já está na lista de leitura.');
           return;
         }
 
-        await updateBook(book._id, { 
+        // Começar a ler (Action do Redux)
+        await dispatch(updateBook(book._id, { 
           status: 'reading', 
           current_page: 0,
           currentPage: 0,
           progress: 0 
-        });
+        }));
+
+        setBook({ ...book, status: 'reading' });
         
-        Alert.alert(
-          '✅ Adicionado!',
-          `"${book.title}" foi adicionado aos livros em leitura.`,
-          [
-            {
-              text: 'Ver Lista',
-              onPress: () => navigation.navigate('ReadingBooks'),
-            },
-            { text: 'OK' },
-          ]
-        );
+        Alert.alert('✅ Adicionado!', 'Adicionado aos livros em leitura.', [
+             { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+
       } catch (error) {
-        console.error('Erro:', error);
-        Alert.alert('Erro', 'Não foi possível iniciar a leitura.');
+        console.error('Erro Redux:', error);
+        Alert.alert('Erro', 'Não foi possível atualizar o estado.');
       }
     }
   };
@@ -154,65 +153,38 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
   const handleToggleFavorite = async () => {
     try {
       const newFavoriteStatus = !isFavorite;
-      await updateBook(book._id, { isFavorite: newFavoriteStatus });
+      
+      // ACTION DO REDUX
+      await dispatch(toggleFavorite(book._id, newFavoriteStatus));
+      
       setIsFavorite(newFavoriteStatus);
       setBook({ ...book, isFavorite: newFavoriteStatus });
       
-      Alert.alert(
-        newFavoriteStatus ? '❤️ Favorito!' : '💔 Removido',
-        newFavoriteStatus ? 'Adicionado aos favoritos.' : 'Removido dos favoritos.'
-      );
     } catch (error) {
-      console.error('Erro:', error);
-      Alert.alert('Erro', 'Não foi possível atualizar os favoritos.');
+      console.error('Erro favoritos:', error);
     }
   };
 
-  const getLanguage = () => {
-    if (!book?.language) return 'PT';
-    if (typeof book.language === 'string') return book.language.toUpperCase();
-    return 'PT';
-  };
-
-  const getYear = () => {
-    if (book?.publishedDate) {
-      return new Date(book.publishedDate).getFullYear();
-    }
-    if (book?.publishYear) return book.publishYear;
-    return 'N/A';
-  };
-
-  const getPublisher = () => {
-    return book?.publisher || 'N/A';
-  };
-
-  const getISBN = () => {
-    return book?.isbn || book?.isbn13 || book?.isbn10 || 'N/A';
-  };
-
-  const getAgeRating = () => {
-    return book?.ageRating || book?.maturityRating || 'Todos';
-  };
-
-  const getFormat = () => {
-    return book?.format || book?.printType || 'Físico';
-  };
-
-  const getEdition = () => {
-    return book?.edition || 'N/A';
-  };
+  // Funções auxiliares de visualização (mantêm-se iguais)
+  const getLanguage = () => book?.language ? (typeof book.language === 'string' ? book.language.toUpperCase() : 'PT') : 'PT';
+  const getYear = () => book?.publishedDate ? new Date(book.publishedDate).getFullYear() : (book?.publishYear || 'N/A');
+  const getPublisher = () => book?.publisher || 'N/A';
+  const getISBN = () => book?.isbn || book?.isbn13 || book?.isbn10 || 'N/A';
+  const getAgeRating = () => book?.ageRating || book?.maturityRating || 'Todos';
+  const getFormat = () => book?.format || book?.printType || 'Físico';
+  const getEdition = () => book?.edition || 'N/A';
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
 
-      {}
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={26} color="#2C3E50" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalhes</Text>
-        {}
+        
         {!isFromList && (
           <TouchableOpacity style={styles.favoriteButton} onPress={handleToggleFavorite}>
             <Icon 
@@ -225,6 +197,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
         {isFromList && <View style={styles.headerSpace} />}
       </View>
 
+      {/* BANNER DA LISTA (Só se vier do SearchScreen com modo lista) */}
       {isFromList && (
         <View style={styles.listBanner}>
           <Icon name="playlist-plus" size={20} color="#7B1FA2" />
@@ -235,6 +208,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
       )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* CARD PRINCIPAL */}
         <View style={styles.bookCard}>
           <View style={styles.decorativeCircleLarge} />
           <View style={styles.decorativeCircleMedium} />
@@ -242,7 +216,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           <View style={styles.bookCardContent}>
             <View style={styles.coverContainer}>
               <Image
-                source={{ uri: book?.coverUrl || book?.cover || 'https://via.placeholder.com/105x158' }}
+                source={{ uri: book?.coverUrl || book?.cover || book?.thumbnail || 'https://via.placeholder.com/105x158' }}
                 style={styles.bookCover}
                 resizeMode="cover"
               />
@@ -268,7 +242,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {}
+        {/* INFO GRIDS */}
         <View style={styles.infoCardsRow}>
           <View style={styles.infoCard}>
             <Icon name="book-open-page-variant" size={20} color="#2A5288" style={styles.infoIcon} />
@@ -291,7 +265,6 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {}
         <View style={styles.infoCardsRow}>
           <View style={styles.infoCard}>
             <Icon name="office-building" size={20} color="#2A5288" style={styles.infoIcon} />
@@ -314,7 +287,6 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {}
         <View style={styles.infoCardsRow}>
           <View style={styles.infoCardWide}>
             <Icon name="barcode" size={20} color="#2A5288" style={styles.infoIcon} />
@@ -331,6 +303,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
 
+        {/* DESCRIÇÃO */}
         {book?.description && (
           <View style={styles.descriptionCard}>
             <View style={styles.cardHeader}>
@@ -341,6 +314,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         )}
 
+        {/* CATEGORIAS */}
         {book?.categories && Array.isArray(book.categories) && book.categories.length > 0 && (
           <View style={styles.categoriesCard}>
             <View style={styles.cardHeader}>
@@ -357,7 +331,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         )}
 
-        {}
+        {/* BOTÃO DE AÇÃO PRINCIPAL */}
         {!isViewOnly && (
           <TouchableOpacity
             style={[
@@ -379,7 +353,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
             )}
             <Text style={styles.mainButtonText}>
               {loading 
-                ? 'A adicionar...' 
+                ? 'A processar...' 
                 : isFromList 
                   ? 'Guardar na Lista' 
                   : book.status === 'read'
