@@ -44,6 +44,14 @@ const HomeScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+       {}
+      <AddBookModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSearchPress={handleSearchPress}
+        onScanPress={handleScanPress}
+      />
+      
         {}
         <TouchableOpacity 
           style={styles.addBookCard}
@@ -114,14 +122,6 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.wideButtonText}>Minhas Listas</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {}
-      <AddBookModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onSearchPress={handleSearchPress}
-        onScanPress={handleScanPress}
-      />
     </SafeAreaView>
   );
 };

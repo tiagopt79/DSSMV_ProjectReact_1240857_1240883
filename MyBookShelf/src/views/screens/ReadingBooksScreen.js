@@ -19,6 +19,10 @@ const ReadingBooksScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+    useEffect(() => {
+    loadBooks();
+  }, [loadBooks]);
+
   const loadBooks = useCallback(async () => {
     try {
       setLoading(true);
@@ -32,10 +36,6 @@ const ReadingBooksScreen = ({ navigation }) => {
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    loadBooks();
-  }, [loadBooks]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

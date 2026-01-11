@@ -1,8 +1,6 @@
-// App.js - SEM React Navigation, SEM Redux
 import React, { useState } from 'react';
 import { SafeAreaView, StatusBar, StyleSheet } from 'react-native';
 
-// Screens
 import HomeScreen from './src/views/screens/HomeScreen';
 import SearchScreen from './src/views/screens/SearchScreen';
 import AddBookScreen from './src/views/screens/AddBookScreen';
@@ -18,14 +16,11 @@ import BookProgressScreen from './src/views/screens/BookProgressScreen';
 import LibraryBookDetailsScreen from './src/views/screens/LibraryBookDetailsScreen';
 
 const App = () => {
-  // Estado de navegação
   const [currentScreen, setCurrentScreen] = useState('Home');
   const [screenParams, setScreenParams] = useState({});
-  const [navigationHistory, setNavigationHistory] = useState([
-    { screen: 'Home', params: {} }
+  const [navigationHistory, setNavigationHistory] = useState([{ screen: 'Home', params: {} }
   ]);
 
-  // Função de navegação
   const navigate = (screenName, params = {}) => {
     console.log('🚀 Navegando para:', screenName, 'com params:', params);
     setCurrentScreen(screenName);
@@ -33,7 +28,6 @@ const App = () => {
     setNavigationHistory([...navigationHistory, { screen: screenName, params }]);
   };
 
-  // Função de voltar
   const goBack = () => {
     if (navigationHistory.length > 1) {
       const newHistory = navigationHistory.slice(0, -1);
@@ -46,13 +40,11 @@ const App = () => {
     }
   };
 
-  // Props comuns para todas as screens
   const navigationProps = {
     navigation: { navigate, goBack },
     route: { params: screenParams },
   };
 
-  // Renderizar a screen atual
   const renderScreen = () => {
     switch (currentScreen) {
       case 'Home':
@@ -79,7 +71,7 @@ const App = () => {
       case 'MyLists':
         return <MyListsScreen {...navigationProps} />;
       
-      case 'ListDetails': // ← NOVA SCREEN
+      case 'ListDetails':
         return <ListDetailsScreen {...navigationProps} />;
       
       case 'ReadingBooks':

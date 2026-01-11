@@ -1,9 +1,5 @@
-// src/services/googleBooksApi.js - Google Books API
 const BASE_URL = 'https://www.googleapis.com/books/v1/volumes';
-
-// OPCIONAL: API Key gratuita em https://console.cloud.google.com
-// Sem API Key: 1000 requests/dia | Com API Key: 10000 requests/dia
-const API_KEY = ''; // Deixa vazio ou adiciona: 'AIzaSy...'
+const API_KEY = 'AIzaSyA3s2pRI48JezBxsdzOTtogIaZ35CqjPX8'; 
 
 export const searchByTitle = async (title) => {
   try {
@@ -29,58 +25,46 @@ export const searchByTitle = async (title) => {
       return {
         id: item.id,
         
-        // Informações básicas
         title: volumeInfo.title || 'Sem título',
         subtitle: volumeInfo.subtitle || '',
         author: volumeInfo.authors?.[0] || 'Autor desconhecido',
         authors: volumeInfo.authors || [],
         author_name: volumeInfo.authors || [],
         
-        // Capa - Google Books tem várias resoluções
         thumbnail: volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:') || null,
         cover: volumeInfo.imageLinks?.large?.replace('http:', 'https:') || 
                volumeInfo.imageLinks?.medium?.replace('http:', 'https:') ||
                volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:') || null,
         coverUrl: volumeInfo.imageLinks?.thumbnail?.replace('http:', 'https:') || null,
-        
-        // Número de páginas - SEMPRE DISPONÍVEL NA GOOGLE BOOKS!
+
         pageCount: volumeInfo.pageCount || 0,
         pages: volumeInfo.pageCount || 0,
         number_of_pages_median: volumeInfo.pageCount || 0,
-        
-        // ISBN
+
         isbn: volumeInfo.industryIdentifiers?.find(id => id.type === 'ISBN_13')?.identifier ||
               volumeInfo.industryIdentifiers?.find(id => id.type === 'ISBN_10')?.identifier || null,
         isbn_13: [volumeInfo.industryIdentifiers?.find(id => id.type === 'ISBN_13')?.identifier].filter(Boolean),
-        
-        // Publicação
+
         publishedDate: volumeInfo.publishedDate || '',
         publishYear: volumeInfo.publishedDate?.split('-')[0] || '',
         first_publish_year: volumeInfo.publishedDate?.split('-')[0] || '',
         publish_year: [volumeInfo.publishedDate?.split('-')[0]].filter(Boolean),
-        
-        // Editora
+ 
         publisher: [volumeInfo.publisher || ''],
-        
-        // Idioma
+
         language: [volumeInfo.language || 'pt'],
-        
-        // Categorias
+
         subject: volumeInfo.categories || [],
         categories: volumeInfo.categories?.join(', ') || '',
-        
-        // Descrição - COMPLETA!
+
         description: volumeInfo.description || '',
-        
-        // Rating da Google
+
         rating: volumeInfo.averageRating || 0,
         ratingsCount: volumeInfo.ratingsCount || 0,
-        
-        // Link para mais info
+
         infoLink: volumeInfo.infoLink || '',
         previewLink: volumeInfo.previewLink || '',
-        
-        // Status inicial
+
         status: 'unread',
         isFavorite: false,
         isWishlist: false,

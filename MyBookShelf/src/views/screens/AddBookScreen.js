@@ -12,7 +12,7 @@ import {
   Platform,
   Image,
 } from 'react-native';
-import { searchByISBN } from '../../services/openLibraryApi';
+import { searchByISBN } from '../../services/googleBooksApi';
 import { addBook } from '../../services/restDbApi';
 import colors from '../../theme/colors';
 
