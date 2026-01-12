@@ -15,7 +15,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
   const [loading, setLoading] = useState(false);
   const [fetchingBook, setFetchingBook] = useState(!!scannedISBN && !initialBook);
 
-  // Se veio do scanner com apenas ISBN, buscar dados do livro
+  
   useEffect(() => {
     const fetchBookData = async () => {
       if (scannedISBN && !initialBook && !book) {
@@ -23,7 +23,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
         setFetchingBook(true);
         
         try {
-          // Busca direto da API Google Books
+          
           const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${scannedISBN}`);
           const data = await response.json();
           
@@ -70,7 +70,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
     fetchBookData();
   }, [scannedISBN, initialBook]);
 
-  // Verifica se o livro está na biblioteca
+
   const libraryBook = book ? libraryBooks.find(b => 
     (b.isbn && book.isbn && b.isbn === book.isbn) || 
     (b._id && book._id && b._id === book._id) ||
@@ -80,7 +80,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
   const isInLibrary = !!libraryBook;
   const currentStatus = libraryBook ? libraryBook.status : null;
 
-  // Atualiza o estado local se o livro mudar no Redux
+ 
   useEffect(() => {
     if (libraryBook) {
       setBook(prev => ({ ...prev, ...libraryBook }));
@@ -93,7 +93,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
     setLoading(true);
     try {
       if (!isInLibrary) {
-        // ADICIONAR (Se não existe)
+        
         const newBookData = {
           ...book,
           status: status || 'toRead',
@@ -104,7 +104,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
         await dispatch(addBook(newBookData));
         if (actionType !== 'favorite') Alert.alert('Sucesso', 'Livro adicionado à biblioteca!');
       } else {
-        // ATUALIZAR (Se já existe)
+       
         if (actionType === 'favorite') {
           await dispatch(toggleFavorite(libraryBook._id, libraryBook.isFavorite));
         } else if (status) {
@@ -116,13 +116,12 @@ const BookDetailsScreen = ({ route, navigation }) => {
           }
         }
       }
-      
-      // Se veio de uma lista e adicionou, também adiciona à lista
+     
       if (fromList && listId && !isInLibrary) {
-        // Aqui podes adicionar lógica para adicionar à lista se necessário
+        
       }
       
-      // Navegação opcional após sucesso
+      
       if (status === 'reading') setTimeout(() => navigation.navigate('ReadingBooks'), 500);
       
     } catch (error) {
@@ -133,7 +132,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  // Se ainda está a buscar dados, mostra loading
+  
   if (fetchingBook) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -144,7 +143,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
     );
   }
 
-  // Se não tem livro depois do fetch, não renderiza nada (o alert já foi mostrado)
+  
   if (!book) {
     return (
       <View style={styles.container}>
@@ -215,7 +214,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
            <Text style={styles.bigButtonText}>Adicionar à Biblioteca</Text>
         </TouchableOpacity>
 
-        {/* SINOPSE */}
+        {}
         {book.description && (
           <View style={styles.synopsisCard}>
             <Text style={styles.synopsisText}>{book.description}</Text>
@@ -378,7 +377,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2A5288',
   },
-  // SINOPSE
   synopsisCard: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 20,

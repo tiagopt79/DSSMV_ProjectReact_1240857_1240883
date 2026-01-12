@@ -10,10 +10,10 @@ const FavoritesScreen = ({ navigation }) => {
 
   const { books } = useSelector(state => state.books);
   
-  // Filtro automático
+ 
   const favorites = books.filter(book => book.isFavorite === true);
 
-  // Carregar se necessário
+  
   useEffect(() => {
     if (books.length === 0) dispatch(fetchBooks());
   }, [dispatch, books.length]);
@@ -36,7 +36,6 @@ const FavoritesScreen = ({ navigation }) => {
   const renderBook = ({ item }) => (
     <TouchableOpacity 
       style={styles.bookCard}
-      // CORREÇÃO: Navega para LibraryBookDetails
       onPress={() => navigation.navigate('LibraryBookDetails', { book: item })}
       activeOpacity={0.9}
     >

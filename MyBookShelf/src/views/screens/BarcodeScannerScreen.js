@@ -185,10 +185,10 @@ const BarcodeScannerScreen = ({ navigation, route }) => {
   const handleISBNDetected = async (isbn) => {
     setLoading(true);
     
-    // Pequeno delay para garantir que o loading overlay aparece
+    
     setTimeout(() => {
       try {
-        // Verifica se o livro já existe na biblioteca
+        
         const existingBook = libraryBooks.find(b => 
           (b.isbn === isbn) || (b.isbn_13 && b.isbn_13.includes(isbn))
         );
@@ -196,7 +196,7 @@ const BarcodeScannerScreen = ({ navigation, route }) => {
         setLoading(false);
 
         if (existingBook) {
-          // Livro já existe - navega para os detalhes com o objeto completo
+          
           navigation.navigate('BookDetails', {
             book: existingBook,
             fromList,
@@ -204,8 +204,6 @@ const BarcodeScannerScreen = ({ navigation, route }) => {
             listName
           });
         } else {
-          // Livro não existe - navega para BookDetails passando apenas o ISBN
-          // O BookDetailsScreen vai fazer o fetch dos dados
           navigation.navigate('BookDetails', {
             scannedISBN: isbn,
             fromScanner: true,
@@ -229,7 +227,7 @@ const BarcodeScannerScreen = ({ navigation, route }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
-      {/* HEADER */}
+      {}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color="#fff" />

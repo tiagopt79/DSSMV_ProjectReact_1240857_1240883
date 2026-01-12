@@ -3,7 +3,7 @@ import {
   ADD_LIST_SUCCESS,
   DELETE_LIST_SUCCESS,
   UPDATE_LIST_SUCCESS
-} from '../actions/listActions'; // Importa os tipos do ficheiro novo
+} from '../actions/listActions'; 
 import { SET_LOADING } from '../types';
 
 const initialState = {

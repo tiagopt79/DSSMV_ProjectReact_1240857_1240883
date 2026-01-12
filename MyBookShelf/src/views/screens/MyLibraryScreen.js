@@ -14,7 +14,7 @@ const MyLibraryScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState('all');
 
-  // Garante que temos dados ao abrir
+  
   useEffect(() => {
     if (books.length === 0) {
       dispatch(fetchBooks());
@@ -27,7 +27,7 @@ const MyLibraryScreen = ({ navigation }) => {
     setRefreshing(false);
   }, [dispatch]);
 
-  // Filtros
+
   const getFilteredBooks = () => {
     if (filter === 'all') return books;
     if (filter === 'toRead') return books.filter(b => b.status === 'toRead' || b.status === 'unread');
@@ -35,7 +35,7 @@ const MyLibraryScreen = ({ navigation }) => {
   };
   const filteredBooks = getFilteredBooks();
 
-  // Contagens para os badges
+  
   const counts = {
     all: books.length,
     reading: books.filter(b => b.status === 'reading').length,
@@ -52,7 +52,7 @@ const MyLibraryScreen = ({ navigation }) => {
   const renderBookCard = ({ item }) => (
     <TouchableOpacity
       style={styles.bookCard}
-      // CORREÇÃO: Navega para LibraryBookDetails
+     
       onPress={() => navigation.navigate('LibraryBookDetails', { book: item })}
       activeOpacity={0.9}
     >
@@ -110,7 +110,7 @@ const MyLibraryScreen = ({ navigation }) => {
         </View>
       </View>
 
-      {/* Botões de Filtro */}
+      {}
       <View style={styles.filtersContainer}>
         <FilterButton label="Todos" count={counts.all} active={filter === 'all'} onPress={() => setFilter('all')} />
         <FilterButton label="A Ler" count={counts.reading} active={filter === 'reading'} onPress={() => setFilter('reading')} />

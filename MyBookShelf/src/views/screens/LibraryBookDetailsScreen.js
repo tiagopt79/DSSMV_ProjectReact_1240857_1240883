@@ -10,20 +10,19 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons'; // Corrigido para MaterialIcons (padrão do projeto) ou MaterialCommunityIcons
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Mantendo o que usavas
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons'; 
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; 
 
-// REDUX IMPORTS
+
 import { useDispatch } from 'react-redux';
 import { 
   updateBook, 
   addBook, 
   toggleFavorite, 
   addBookToList, 
-  fetchBooks // Para garantir atualização se adicionarmos novo livro
+  fetchBooks 
 } from '../../flux/actions';
 
-// Importamos apenas o serviço de leitura GET para verificar existência (não altera estado)
 import { getBookByIsbn } from '../../services/restDbApi';
 
 const LibraryBookDetailsScreen = ({ route, navigation }) => {
@@ -33,14 +32,13 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
   const [book, setBook] = useState(initialBook);
   const [loading, setLoading] = useState(false);
   
-  // Estado local para UI imediata, mas o Redux tratará dos dados reais
+  
   const [isFavorite, setIsFavorite] = useState(initialBook?.isFavorite || false);
 
   const isFromList = fromList === true && listId && isNewBook === true;
   const isViewOnly = viewOnly === true || (fromList === true && !isNewBook);
 
   const handleMainAction = async () => {
-    // --- LÓGICA DE ADICIONAR À LISTA ---
     if (isFromList) {
       try {
         setLoading(true);
@@ -48,11 +46,10 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
 
         let bookIdToAdd = book._id;
 
-        // Se o livro não tem ID (vem do Google Books), precisamos de criar ou encontrar na DB primeiro
+        
         if (!book._id) {
             let existingBook = null;
             if (book.isbn) {
-                // Verificação rápida se já existe na DB
                 existingBook = await getBookByIsbn(book.isbn);
             }
 
@@ -61,17 +58,17 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
                 console.log('✅ Livro já existia, ID:', bookIdToAdd);
             } else {
                 console.log('➕ Criando novo livro via Redux...');
-                // Dispara a action que cria o livro e atualiza o Redux
+                
                 const newBookAction = await dispatch(addBook({
                     ...book,
-                    status: 'wishlist', // Status padrão
+                    status: 'wishlist', 
                 }));
                 
                 if (newBookAction) bookIdToAdd = newBookAction._id; 
             }
         }
 
-        // Adicionar à lista via Redux Action
+        
         await dispatch(addBookToList(listId, bookIdToAdd));
         
         Alert.alert(
@@ -86,10 +83,9 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
         setLoading(false);
       }
     } 
-    // --- LÓGICA DE LEITURA (Start Reading / Reread) ---
     else {
       try {
-        // Reler livro
+        
         if (book.status === 'read') {
           Alert.alert(
             '📖 Reler Livro',
@@ -99,7 +95,6 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
               {
                 text: 'Sim, Reler',
                 onPress: async () => {
-                   // ACTION DO REDUX
                    await dispatch(updateBook(book._id, { 
                       status: 'reading', 
                       current_page: 0,
@@ -108,7 +103,6 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
                       finished_date: null,
                    }));
                    
-                   // Atualiza estado local para refletir na UI instantaneamente
                    setBook({ ...book, status: 'reading', progress: 0 });
 
                    Alert.alert('✅ Livro Reiniciado!', 'Movido para "A Ler".', [
@@ -126,7 +120,6 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           return;
         }
 
-        // Começar a ler (Action do Redux)
         await dispatch(updateBook(book._id, { 
           status: 'reading', 
           current_page: 0,
@@ -151,7 +144,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
     try {
       const newFavoriteStatus = !isFavorite;
       
-      // ACTION DO REDUX
+      
       await dispatch(toggleFavorite(book._id, newFavoriteStatus));
       
       setIsFavorite(newFavoriteStatus);
@@ -162,7 +155,6 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  // Funções auxiliares de visualização
   const getLanguage = () => book?.language ? (typeof book.language === 'string' ? book.language.toUpperCase() : 'PT') : 'PT';
   const getYear = () => book?.publishedDate ? new Date(book.publishedDate).getFullYear() : (book?.publishYear || 'N/A');
   const getPublisher = () => book?.publisher || 'N/A';
@@ -175,7 +167,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
 
-      {/* HEADER */}
+      {}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={26} color="#2C3E50" />
@@ -194,7 +186,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
         {isFromList && <View style={styles.headerSpace} />}
       </View>
 
-      {/* BANNER DA LISTA (Só se vier do SearchScreen com modo lista) */}
+      {}
       {isFromList && (
         <View style={styles.listBanner}>
           <Icon name="playlist-plus" size={20} color="#7B1FA2" />
@@ -205,13 +197,13 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
       )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* CARD PRINCIPAL */}
+        {}
         <View style={styles.bookCard}>
           <View style={styles.decorativeCircleLarge} />
           <View style={styles.decorativeCircleMedium} />
 
           <View style={styles.bookCardContent}>
-            {/* CORREÇÃO AQUI: Propriedades de sombra movidas para o View container */}
+            {}
             <View style={styles.coverContainer}>
               <Image
                 source={{ uri: book?.coverUrl || book?.cover || book?.thumbnail || 'https://via.placeholder.com/105x158' }}
@@ -240,7 +232,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* INFO GRIDS */}
+        {}
         <View style={styles.infoCardsRow}>
           <View style={styles.infoCard}>
             <Icon name="book-open-page-variant" size={20} color="#2A5288" style={styles.infoIcon} />
@@ -301,7 +293,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* DESCRIÇÃO */}
+        {}
         {book?.description && (
           <View style={styles.descriptionCard}>
             <View style={styles.cardHeader}>
@@ -312,7 +304,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         )}
 
-        {/* CATEGORIAS */}
+        {}
         {book?.categories && Array.isArray(book.categories) && book.categories.length > 0 && (
           <View style={styles.categoriesCard}>
             <View style={styles.cardHeader}>
@@ -329,7 +321,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           </View>
         )}
 
-        {/* BOTÃO DE AÇÃO PRINCIPAL */}
+        {}
         {!isViewOnly && (
           <TouchableOpacity
             style={[
@@ -470,14 +462,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 18,
   },
-  // --- ESTILOS CORRIGIDOS ---
+  
   coverContainer: {
     position: 'relative',
     width: 105,
     height: 158,
     borderRadius: 14,
     backgroundColor: '#fff',
-    // Propriedades de sombra movidas para a View
+    
     elevation: 6,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 3 },
@@ -488,7 +480,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     borderRadius: 14,
-    // Sem 'elevation' aqui
+   
   },
   coverGloss: {
     position: 'absolute',
@@ -500,7 +492,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 14,
     borderTopRightRadius: 14,
   },
-  // -------------------------
+  
   bookInfo: {
     flex: 1,
     marginLeft: 16,

@@ -2,7 +2,7 @@ import * as types from '../types';
 import * as RestDB from '../../services/restDbApi';
 import * as GoogleBooks from '../../services/googleBooksApi';
 
-// --- PESQUISA (Google Books) ---
+
 
 export const searchBooks = (query) => async (dispatch) => {
   dispatch({ type: types.SET_LOADING, payload: true });
@@ -18,7 +18,7 @@ export const clearSearchResults = () => ({
   type: types.CLEAR_SEARCH_RESULTS
 });
 
-// --- CRUD (RestDB - A tua Biblioteca) ---
+
 
 export const fetchBooks = () => async (dispatch) => {
   dispatch({ type: types.SET_LOADING, payload: true });
@@ -48,7 +48,6 @@ export const addBookFromISBN = (isbn) => async (dispatch) => {
   try {
     const bookInfo = await GoogleBooks.searchByISBN(isbn);
     
-    // Adiciona à biblioteca com status padrão 'toRead'
     const newBook = await RestDB.addBook({
       ...bookInfo,
       status: 'toRead',
@@ -71,16 +70,16 @@ export const addBookFromISBN = (isbn) => async (dispatch) => {
 
 export const updateBook = (bookId, updates) => async (dispatch, getState) => {
   try {
-    // Busca o livro atual do estado
+ 
     const currentBook = getState().books.books.find(b => b._id === bookId);
     
-    // Se está a mudar para 'reading' e o livro estava 'read' ou tinha progresso, reseta
+    
     if (updates.status === 'reading' && currentBook) {
       const wasRead = currentBook.status === 'read';
       const hadProgress = (currentBook.currentPage || currentBook.current_page || 0) > 0;
       
       if (wasRead || hadProgress) {
-        // Reset do progresso quando volta a ler
+        
         updates = {
           ...updates,
           currentPage: 0,
@@ -122,7 +121,7 @@ export const toggleFavorite = (bookId, isFavorite) => async (dispatch) => {
 
 export const updateReadingProgress = (bookId, currentPage, totalPages, notes = '') => async (dispatch, getState) => {
   try {
-    // Busca o livro atual para pegar a página anterior
+  
     const currentBook = getState().books.books.find(b => b._id === bookId);
     const previousPage = currentBook?.currentPage || currentBook?.current_page || 0;
     
@@ -141,7 +140,7 @@ export const updateReadingProgress = (bookId, currentPage, totalPages, notes = '
     await RestDB.updateBook(bookId, updates);
     dispatch({ type: types.UPDATE_BOOK, payload: { bookId, updates } });
     
-    // Adiciona sessão de leitura com os campos obrigatórios
+    
     if (currentPage > previousPage) {
       const session = {
         bookId,

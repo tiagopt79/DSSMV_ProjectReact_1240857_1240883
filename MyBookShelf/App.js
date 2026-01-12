@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { SafeAreaView, StatusBar, StyleSheet } from 'react-native';
-import { Provider } from 'react-redux'; // Importar o Provider
-import store from './src/flux/store';   // Importar a Store que já existe
+import { Provider } from 'react-redux'; 
+import store from './src/flux/store';  
 
-// Screens
+
 import HomeScreen from './src/views/screens/HomeScreen';
 import SearchScreen from './src/views/screens/SearchScreen';
 import AddBookScreen from './src/views/screens/AddBookScreen';

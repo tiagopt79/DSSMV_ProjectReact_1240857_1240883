@@ -53,7 +53,6 @@ const WishListScreen = ({ navigation }) => {
   const renderBook = ({ item }) => (
     <TouchableOpacity 
       style={styles.bookCard}
-      // CORREÇÃO: Navega para LibraryBookDetails
       onPress={() => navigation.navigate('LibraryBookDetails', { book: item })}
       activeOpacity={0.9}
     >

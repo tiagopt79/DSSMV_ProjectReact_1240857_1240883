@@ -13,17 +13,14 @@ const HomeScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const [modalVisible, setModalVisible] = useState(false);
 
-  // 1. Ler dados do Redux para mostrar estatísticas em tempo real
   const { books } = useSelector(state => state.books);
   const { lists } = useSelector(state => state.lists);
 
-  // Cálculos dinâmicos
   const readingCount = books.filter(b => b.status === 'reading').length;
   const wishlistCount = books.filter(b => b.status === 'wishlist' || b.isWishlist).length;
   const favoritesCount = books.filter(b => b.isFavorite).length;
   const totalBooks = books.length;
 
-  // 2. Carregar dados iniciais assim que a App abre
   useEffect(() => {
     dispatch(fetchBooks());
     dispatch(fetchLists());
@@ -37,7 +34,7 @@ const HomeScreen = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       
-      {/* HEADER */}
+      {}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>MyBookShelf</Text>
         <Text style={styles.headerSubtitle}>
@@ -52,7 +49,7 @@ const HomeScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ADD BOOK CARD */}
+        {}
         <TouchableOpacity 
           style={styles.addBookCard}
           onPress={handleAddBookPress}
@@ -67,7 +64,7 @@ const HomeScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        {/* READING NOW BUTTON (Wide) */}
+        {}
         <TouchableOpacity 
           style={styles.wideButton}
           onPress={() => navigation.navigate('ReadingBooks')}
@@ -85,7 +82,7 @@ const HomeScreen = ({ navigation }) => {
           <MaterialIcons name="chevron-right" size={24} color={colors.textLight} />
         </TouchableOpacity>
 
-        {/* GRID MENU */}
+        {}
         <View style={styles.menuGrid}>
           <TouchableOpacity
             style={styles.menuCard}
@@ -112,7 +109,7 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* LIBRARY BUTTON */}
+        {}
         <TouchableOpacity 
           style={styles.wideButton}
           onPress={() => navigation.navigate('MyLibrary')}
@@ -128,13 +125,13 @@ const HomeScreen = ({ navigation }) => {
           <MaterialIcons name="chevron-right" size={24} color={colors.textLight} />
         </TouchableOpacity>
 
-        {/* LISTS BUTTON - CORRIGIDO */}
+        {}
         <TouchableOpacity 
           style={styles.wideButton}
           onPress={() => navigation.navigate('MyLists')}
           activeOpacity={0.8}
         >
-          {/* 1. Ícone da esquerda */}
+          {}
           <MaterialIcons 
             name="list" 
             size={28} 
@@ -142,12 +139,12 @@ const HomeScreen = ({ navigation }) => {
             style={styles.wideButtonIcon} 
           />
           
-          {/* 2. Texto (Com flex: 1 para ocupar o espaço e empurrar a seta) */}
+          {}
           <View style={{ flex: 1, justifyContent: 'center' }}>
             <Text style={styles.wideButtonText}>Minhas Listas</Text>
           </View>
 
-          {/* 3. Ícone da direita (Seta) */}
+          {}
           <MaterialIcons 
             name="chevron-right" 
             size={24} 

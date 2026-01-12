@@ -10,8 +10,7 @@ import colors from '../../theme/colors';
 
 const BookCard = ({ book, onPress, hideStatus = false }) => {
   
-  // Função auxiliar para garantir que o status existe antes de tentar mostrar
-  const shouldShowStatus = !hideStatus && book.status && book.status !== '';
+  const shouldShorwStatus = !hideStatus && book.status && book.status !== '';
 
   return (
     <TouchableOpacity 
@@ -42,7 +41,7 @@ const BookCard = ({ book, onPress, hideStatus = false }) => {
           {book.author || book.authors?.join(', ') || 'Autor desconhecido'}
         </Text>
         
-        {/* Verifica ano de várias fontes possíveis */}
+        {}
         {(book.publishYear || book.publishedDate) && (
           <Text style={styles.year}>
             {book.publishYear || (book.publishedDate ? book.publishedDate.substring(0,4) : '')}
@@ -55,7 +54,7 @@ const BookCard = ({ book, onPress, hideStatus = false }) => {
           </Text>
         )}
         
-        {/* LÓGICA DO STATUS: Só mostra se não estiver escondido E se tiver status */}
+        {}
         {shouldShowStatus && (
           <View style={[
             styles.statusBadge, 
@@ -149,15 +148,13 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     marginTop: 8,
   },
-  // Cores de Fundo
-  status_wishlist: { backgroundColor: '#E3F2FD' }, // Azul claro
-  status_reading: { backgroundColor: '#FFF3E0' }, // Laranja claro
-  status_read: { backgroundColor: '#E8F5E9' },    // Verde claro
-  status_finished: { backgroundColor: '#E8F5E9' }, // Verde claro
-  status_abandoned: { backgroundColor: '#FFEBEE' },// Vermelho claro
-  status_default: { backgroundColor: '#F5F5F5' },  // Cinza
+  status_wishlist: { backgroundColor: '#E3F2FD' }, 
+  status_reading: { backgroundColor: '#FFF3E0' }, 
+  status_read: { backgroundColor: '#E8F5E9' },   
+  status_finished: { backgroundColor: '#E8F5E9' }, 
+  status_abandoned: { backgroundColor: '#FFEBEE' },
+  status_default: { backgroundColor: '#F5F5F5' },  
   
-  // Cores de Texto (para contraste)
   statusText: { fontSize: 11, fontWeight: '600' },
   text_wishlist: { color: '#1976D2' },
   text_reading: { color: '#E65100' },

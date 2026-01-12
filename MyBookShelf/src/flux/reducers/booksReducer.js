@@ -1,8 +1,8 @@
 import * as types from '../types';
 
 const initialState = {
-  books: [],           // A tua biblioteca (Minha Biblioteca)
-  searchResults: [],   // Resultados da pesquisa (SearchScreen)
+  books: [],           
+  searchResults: [],   
   loading: false,
   error: null,
 };
@@ -15,7 +15,7 @@ const booksReducer = (state = initialState, action) => {
     case types.SET_ERROR:
       return { ...state, error: action.payload, loading: false };
 
-    // --- BIBLIOTECA ---
+    
     case types.SET_BOOKS:
       return { ...state, books: action.payload, loading: false };
 
@@ -48,7 +48,7 @@ const booksReducer = (state = initialState, action) => {
         ),
       };
 
-    // --- PESQUISA ---
+   
     case types.SET_SEARCH_RESULTS:
       return { ...state, searchResults: action.payload, loading: false };
 

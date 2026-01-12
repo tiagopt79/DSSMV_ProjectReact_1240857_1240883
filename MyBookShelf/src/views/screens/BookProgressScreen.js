@@ -23,22 +23,19 @@ const BookProgressScreen = ({ route, navigation }) => {
   const dispatch = useDispatch();
   const { book: initialBook } = route.params;
 
-  // Ligar ao Redux para ter sempre os dados mais frescos do livro
+  
   const book = useSelector(state => 
     state.books.books.find(b => b._id === initialBook._id) || initialBook
   );
-
   const totalPages = book.pages || book.pageCount || 0;
   const current = book.current_page || book.currentPage || 0;
 
-  // Estados locais
   const [currentPage, setCurrentPage] = useState(current > 0 ? current.toString() : '');
   const [notes, setNotes] = useState('');
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Carregar histórico ao abrir
   useEffect(() => {
     loadHistory();
   }, []);
@@ -112,7 +109,7 @@ const BookProgressScreen = ({ route, navigation }) => {
     >
       <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
       
-      {/* HEADER */}
+      {}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={26} color="#2A5288" />
@@ -123,7 +120,7 @@ const BookProgressScreen = ({ route, navigation }) => {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* INFO DO LIVRO */}
+        {}
         <View style={styles.bookInfoCard}>
           <Image 
             source={{ uri: book.cover || book.thumbnail || 'https://via.placeholder.com/100' }} 
@@ -139,7 +136,7 @@ const BookProgressScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* PROGRESSO ATUAL */}
+        {}
         <View style={styles.card}>
           <View style={styles.progressHeader}>
             <MaterialIcons name="trending-up" size={24} color="#2A5288" />
@@ -155,7 +152,7 @@ const BookProgressScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* REGISTAR NOVA PÁGINA */}
+        {}
         <View style={styles.card}>
           <View style={styles.progressHeader}>
             <MaterialIcons name="add-circle-outline" size={24} color="#7B1FA2" />
@@ -177,7 +174,7 @@ const BookProgressScreen = ({ route, navigation }) => {
             <Text style={styles.totalText}>/ {totalPages || '?'}</Text>
           </View>
 
-          {/* PREVIEW DO NOVO PROGRESSO */}
+          {}
           {currentPage && parseInt(currentPage) > current && (
             <View style={styles.previewProgress}>
               <View style={styles.progressBarBg}>
@@ -190,7 +187,7 @@ const BookProgressScreen = ({ route, navigation }) => {
           )}
         </View>
 
-        {/* NOTAS */}
+        {}
         <View style={styles.card}>
           <View style={styles.progressHeader}>
             <MaterialIcons name="edit-note" size={24} color="#FF9800" />
@@ -209,7 +206,7 @@ const BookProgressScreen = ({ route, navigation }) => {
           />
         </View>
 
-        {/* HISTÓRICO */}
+        {}
         <View style={styles.card}>
           <View style={styles.progressHeader}>
             <MaterialIcons name="history" size={24} color="#4CAF50" />
@@ -312,7 +309,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   
-  // CARD DO LIVRO
+ 
   bookInfoCard: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
@@ -365,7 +362,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   
-  // CARDS GERAIS
+  
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -391,7 +388,6 @@ const styles = StyleSheet.create({
     color: '#2A5288',
   },
   
-  // PROGRESSO VISUAL
   progressVisual: {
     alignItems: 'center',
   },
@@ -420,7 +416,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   
-  // INPUT DE PÁGINA
+  
   helperText: {
     fontSize: 14,
     color: '#666',
@@ -450,7 +446,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   
-  // PREVIEW DO PROGRESSO
+  
   previewProgress: {
     marginTop: 16,
     padding: 12,
@@ -464,8 +460,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-  
-  // NOTAS
+
   notesInput: {
     backgroundColor: '#F5F5F5',
     borderRadius: 12,
@@ -478,7 +473,7 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
   },
   
-  // HISTÓRICO
+
   emptyState: {
     alignItems: 'center',
     paddingVertical: 32,
@@ -537,7 +532,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   
-  // FOOTER
   footer: {
     position: 'absolute',
     bottom: 0,

@@ -12,16 +12,16 @@ export const searchByTitle = async (title) => {
     
     const response = await fetch(url);
     
-    // LOG DO STATUS DA RESPOSTA
+   
     console.log('📊 Status HTTP:', response.status);
     console.log('📋 Headers:', JSON.stringify(response.headers));
     
     if (!response.ok) {
-      // CAPTURA O ERRO DETALHADO DA API
+      
       const errorText = await response.text();
       console.error('❌ Resposta de erro:', errorText);
       
-      // ERROS ESPECÍFICOS
+     
       if (response.status === 403) {
         throw new Error('API Key inválida ou quota excedida. Verifica a tua chave da Google Books API.');
       }
@@ -109,12 +109,12 @@ export const searchByTitle = async (title) => {
   } catch (error) {
     console.error('❌ ERRO DETALHADO em searchByTitle:', error);
     
-    // SE FOR ERRO DE REDE
+    
     if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
       throw new Error('Sem conexão à Internet. Verifica a tua ligação e tenta novamente.');
     }
     
-    // REPASSAR O ERRO COM MAIS CONTEXTO
+    
     throw new Error(error.message || 'Erro desconhecido ao buscar livros');
   }
 };

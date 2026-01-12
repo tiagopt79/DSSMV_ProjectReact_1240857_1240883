@@ -50,7 +50,7 @@ const ReadingBooksScreen = ({ navigation }) => {
     
     return (
       <View style={styles.bookCard}>
-        {/* ÁREA SUPERIOR: Capa e Info (Clicável para detalhes) */}
+        {}
         <TouchableOpacity
           style={styles.cardContent} 
           onPress={() => navigation.navigate('LibraryBookDetails', { book: item })}
@@ -81,7 +81,7 @@ const ReadingBooksScreen = ({ navigation }) => {
           </View>
         </TouchableOpacity>
 
-        {/* ÁREA INFERIOR: Botões de Ação (Separados por uma linha) */}
+        {}
         <View style={styles.actionsRow}>
           <TouchableOpacity style={styles.actionBtn} onPress={() => handleUpdateProgress(item)}>
             <MaterialIcons name="edit" size={18} color={colors.primary} />
@@ -203,7 +203,6 @@ const styles = StyleSheet.create({
     paddingBottom: 30 
   },
   
-  // CARTÃO
   bookCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -216,12 +215,12 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.06)',
-    // IMPORTANTE: Flex direction padrão é column (vertical), que é o que queremos aqui
+  
   },
   
-  // PARTE DE CIMA (Capa + Texto)
+
   cardContent: {
-    flexDirection: 'row', // Aqui sim, queremos linha (Capa à esq, Texto à dir)
+    flexDirection: 'row', 
     padding: 16,
   },
   coverContainer: { 
@@ -240,7 +239,7 @@ const styles = StyleSheet.create({
   },
   bookInfo: { 
     flex: 1, 
-    justifyContent: 'space-between' // Espalha título no topo e barra em baixo
+    justifyContent: 'space-between' 
   },
   bookTitle: { 
     fontSize: 17, 
@@ -274,7 +273,6 @@ const styles = StyleSheet.create({
     fontWeight: '600' 
   },
 
-  // PARTE DE BAIXO (Botões)
   actionsRow: {
     flexDirection: 'row',
     borderTopWidth: 1,

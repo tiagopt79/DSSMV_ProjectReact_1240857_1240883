@@ -20,7 +20,7 @@ import colors from '../../theme/colors';
 const SearchScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
   
-  // Parâmetros que vêm da lista (se existirem)
+  
   const { fromList, listId, listName, listColor } = route.params || {};
 
   const [query, setQuery] = useState('');
@@ -38,7 +38,6 @@ const SearchScreen = ({ navigation, route }) => {
   };
 
   const handleBookPress = (book) => {
-    // Se veio de uma lista personalizada, vai para LibraryBookDetails
     if (fromList && listId) {
       navigation.navigate('LibraryBookDetails', { 
         book: book,
@@ -48,7 +47,6 @@ const SearchScreen = ({ navigation, route }) => {
         isNewBook: true 
       });
     } else {
-      // Se não veio de lista (pesquisa normal da home), vai para BookDetails
       navigation.navigate('BookDetails', { 
         book: book
       });
@@ -59,16 +57,16 @@ const SearchScreen = ({ navigation, route }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#2A5288" />
       
-      {/* HEADER CORRIGIDO */}
+      {}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           
-          {/* Botão Voltar */}
+          {}
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} activeOpacity={0.7}>
              <MaterialIcons name="arrow-back" size={28} color="#FFF" />
           </TouchableOpacity>
           
-          {/* Caixa de Pesquisa */}
+          {}
           <View style={styles.searchBox}>
             <MaterialIcons name="search" size={24} color="#666" style={{ marginRight: 8 }} />
             
@@ -92,7 +90,7 @@ const SearchScreen = ({ navigation, route }) => {
 
         </View>
 
-        {/* Banner Opcional (Aparece em baixo do header se vier de uma lista) */}
+        {}
         {fromList && (
           <View style={[styles.listBanner, { backgroundColor: listColor || '#27AE60' }]}>
               <MaterialIcons name="playlist-add" size={16} color="#fff" />
