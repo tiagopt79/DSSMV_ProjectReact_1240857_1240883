@@ -1,5 +1,5 @@
-export const API_KEY = '55832e3e87b83972153b7a8de3350452f3560';
-export const DATABASE_URL = 'https://mybookshelf-49a2.restdb.io/rest';
+export const API_KEY = '03e7a82a92b005ba61d1ffec1c6b088a931f5';
+export const DATABASE_URL = 'https://mybookshelf-7197.restdb.io/rest';
 
 export const GOOGLE_BOOKS_API_KEY = 'AIzaSyA3s2pRI48JezBxsdzOTtogIaZ35CqjPX8';
 export const GOOGLE_BOOKS_BASE_URL = 'https://www.googleapis.com/books/v1/volumes';
@@ -21,15 +21,15 @@ export const COLORS = {
 
 
 export const isConfigured = () => {
-  const hasApiKey = API_KEY && API_KEY !== '55832e3e87b83972153b7a8de3350452f3560';
-  const hasDbUrl = DATABASE_URL && DATABASE_URL !== 'https://mybookshelf-49a2.restdb.io/rest';
+  const hasApiKey = API_KEY && API_KEY !== '03e7a82a92b005ba61d1ffec1c6b088a931f5';
+  const hasDbUrl = DATABASE_URL && DATABASE_URL !== 'https://mybookshelf-7197.restdb.io/rest';
   
   return hasApiKey && hasDbUrl;
 };
 
 export const getConfigStatus = () => {
-  const hasApiKey = API_KEY && API_KEY !== '55832e3e87b83972153b7a8de3350452f3560';
-  const hasDbUrl = DATABASE_URL && DATABASE_URL !== 'https://mybookshelf-49a2.restdb.io/rest';
+  const hasApiKey = API_KEY && API_KEY !== '03e7a82a92b005ba61d1ffec1c6b088a931f5';
+  const hasDbUrl = DATABASE_URL && DATABASE_URL !== 'https://mybookshelf-7197.restdb.io/restt';
   
   return {
     apiKey: hasApiKey ? '✅ Configurada' : '❌ Falta configurar',

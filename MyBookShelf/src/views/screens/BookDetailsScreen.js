@@ -268,12 +268,16 @@ const styles = StyleSheet.create({
   },
   coverContainer: {
     marginBottom: 14,
+    elevation: 3,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
   cover: {
     width: 140,
     height: 200,
     borderRadius: 8,
-    elevation: 3,
   },
   noCover: {
     width: 140,
