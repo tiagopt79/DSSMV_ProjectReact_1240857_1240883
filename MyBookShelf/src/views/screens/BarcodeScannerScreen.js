@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,211 +8,256 @@ import {
   ActivityIndicator,
   Platform,
   Vibration,
-  StatusBar
+  StatusBar,
+  PermissionsAndroid
 } from 'react-native';
 import { WebView } from 'react-native-webview';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons'; // Correção do ícone
-// Imports do Redux
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useDispatch, useSelector } from 'react-redux';
 import { addBookFromISBN, addBookToList } from '../../flux/actions';
 import colors from '../../theme/colors';
 
 const BarcodeScannerScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
-  // Recebe parâmetros se viemos de uma lista
   const { fromList, listId, listName } = route.params || {};
   
   const [loading, setLoading] = useState(false);
+  const [hasPermission, setHasPermission] = useState(false);
   const webViewRef = useRef(null);
 
-  // Aceder à biblioteca para verificar duplicados localmente
   const libraryBooks = useSelector(state => state.books.books);
 
-  // O teu HTML da câmara (Mantido intacto)
+  useEffect(() => {
+    const requestPermission = async () => {
+      if (Platform.OS === 'android') {
+        try {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.CAMERA
+          );
+          if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+            setHasPermission(true);
+          } else {
+            Alert.alert('Erro', 'Sem permissão de câmara.');
+            navigation.goBack();
+          }
+        } catch (err) {
+          console.warn(err);
+        }
+      } else {
+        setHasPermission(true);
+      }
+    };
+    requestPermission();
+  }, []);
+
   const cameraHTML = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <script src="https://cdn.jsdelivr.net/npm/@zxing/library@latest"></script>
+      <script src="https://unpkg.com/@zxing/library@latest"></script>
       <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; font-family: Arial, sans-serif; overflow: hidden; }
-        #camera-container { position: relative; width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        video { width: 100%; height: 100%; object-fit: cover; }
-        #scan-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 180px; border: 3px solid #4CAF50; border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6); pointer-events: none; }
-        .scanning-line { position: absolute; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, #4CAF50, transparent); animation: scan 2s linear infinite; }
-        @keyframes scan { 0% { top: 0; } 50% { top: 100%; } 100% { top: 0; } }
-        #instructions { position: absolute; bottom: 100px; left: 0; right: 0; text-align: center; color: white; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); padding: 0 20px; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
+        #video-container { 
+            position: relative; 
+            width: 100vw; 
+            height: 100vh; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+        video { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+        }
+        /* Caixa de Scan (Visual) */
+        .scan-box {
+            position: absolute;
+            width: 70%;
+            height: 200px;
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); /* Escurece à volta */
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        /* Linha Vermelha de Scan */
+        .scan-line {
+            width: 90%;
+            height: 2px;
+            background: red;
+            box-shadow: 0 0 4px red;
+            animation: scanAnim 2s ease-in-out infinite;
+        }
+        @keyframes scanAnim { 
+            0% { transform: translateY(-80px); opacity: 0.5; } 
+            50% { opacity: 1; } 
+            100% { transform: translateY(80px); opacity: 0.5; } 
+        }
       </style>
     </head>
     <body>
-      <div id="camera-container">
-        <video id="video" autoplay playsinline></video>
-        <div id="scan-overlay"><div class="scanning-line"></div></div>
-        <div id="instructions">Posicione o código de barras na área verde</div>
+      <div id="video-container">
+        <video id="video" autoplay muted playsinline></video>
+        <div class="scan-box">
+            <div class="scan-line"></div>
+        </div>
       </div>
+
       <script>
         const video = document.getElementById('video');
         const codeReader = new ZXing.BrowserMultiFormatReader();
-        let isScanning = false;
+        let lastScanTime = 0;
 
-        async function startCamera() {
+        async function start() {
           try {
-            const constraints = { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } };
+            // CONFIGURAÇÃO OTIMIZADA: 640x480 (VGA)
+            // Isto remove o "piscar" porque o processador não sobrecarrega
+            const constraints = { 
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 640 }, 
+                    height: { ideal: 480 } 
+                } 
+            };
+            
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
-            video.onloadedmetadata = () => { video.play(); startScanning(); };
+            
+            video.onloadedmetadata = () => {
+                video.play();
+                requestAnimationFrame(scanLoop);
+            };
           } catch (err) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: 'Camera permission denied' }));
+            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: err.message }));
           }
         }
 
-        function startScanning() {
-          if (isScanning) return;
-          isScanning = true;
-          codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
-            if (result) {
-              const code = result.text;
-              if (/^\\d{10}$/.test(code) || /^\\d{13}$/.test(code)) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'barcode', data: code }));
-                isScanning = false; 
-                // Pausa breve para não ler o mesmo código 10 vezes
-                setTimeout(() => { isScanning = true; }, 3000);
-              }
-            }
-          });
+        function scanLoop() {
+           const now = Date.now();
+           
+           // THROTTLE: Só lê a cada 250ms (4 vezes por segundo)
+           // Isto estabiliza a imagem e poupa bateria
+           if (now - lastScanTime > 250) {
+               
+               codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
+                  if (result) {
+                     const code = result.text;
+                     // Limpeza básica do código
+                     const clean = code.replace(/-/g, '');
+                     
+                     // Valida se é ISBN (apenas números, 10 ou 13 dígitos)
+                     if (/^\\d{9,13}[\\dX]?$/.test(clean)) {
+                        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'barcode', data: clean }));
+                     }
+                  }
+               });
+               
+               lastScanTime = now;
+           }
+           
+           requestAnimationFrame(scanLoop);
         }
-        startCamera();
+
+        // Inicia após breve pausa para garantir que a WebView está pronta
+        setTimeout(start, 500);
       </script>
     </body>
     </html>
   `;
 
-  const handleWebViewMessage = async (event) => {
+  const handleWebViewMessage = (event) => {
     try {
       const message = JSON.parse(event.nativeEvent.data);
       
-      if (message.type === 'error') {
-        Alert.alert('Erro', 'Permissão de câmara negada.');
-      }
-      
       if (message.type === 'barcode') {
         const isbn = message.data;
-        // Evita processar múltiplos scans se já estivermos a carregar
         if (!loading) {
           Vibration.vibrate(100);
           handleISBNDetected(isbn);
         }
       }
-    } catch (error) {
-      console.error('Erro ao processar mensagem:', error);
-    }
+    } catch (e) { console.error(e); }
   };
 
   const handleISBNDetected = async (isbn) => {
     setLoading(true);
-    
     try {
-      // 1. Verificar se já existe na biblioteca (Redux)
       const existingBook = libraryBooks.find(b => 
         (b.isbn === isbn) || (b.isbn_13 && b.isbn_13.includes(isbn))
       );
 
       if (existingBook) {
         if (fromList && listId) {
-          // Se viemos de uma lista, adicionamos o livro existente a essa lista
           await dispatch(addBookToList(listId, existingBook._id));
-          Alert.alert(
-            'Adicionado à Lista', 
-            `"${existingBook.title}" já estava na tua biblioteca e foi adicionado à lista "${listName}".`,
-            [{ text: 'OK', onPress: () => navigation.goBack() }]
-          );
+          Alert.alert('Sucesso', `"${existingBook.title}" adicionado à lista!`, [
+            { text: 'OK', onPress: () => navigation.goBack() }
+          ]);
         } else {
-          Alert.alert(
-            'Já existe!',
-            `O livro "${existingBook.title}" já está na tua biblioteca.`,
-            [
-              { text: 'OK', onPress: () => setLoading(false) }, // Permite continuar a scanear
-              { text: 'Ver Detalhes', onPress: () => navigation.navigate('BookDetails', { book: existingBook }) }
-            ]
-          );
-        }
-        return;
-      }
-
-      // 2. Se não existe, buscar e criar (Redux Action)
-      const newBook = await dispatch(addBookFromISBN(isbn));
-      
-      if (newBook) {
-        if (fromList && listId) {
-          await dispatch(addBookToList(listId, newBook._id));
-          Alert.alert('Sucesso', 'Livro adicionado à biblioteca e à lista!');
-        } else {
-          Alert.alert(
-            'Sucesso! 📚',
-            `"${newBook.title}" foi adicionado.`,
-            [
-              { text: 'Scanear Outro', onPress: () => setLoading(false) },
-              { text: 'Ver Detalhes', onPress: () => navigation.replace('BookDetails', { book: newBook }) }
-            ]
-          );
+          Alert.alert('Já existe', `"${existingBook.title}" já está na tua biblioteca.`, [
+            { text: 'OK', onPress: () => setLoading(false) }
+          ]);
         }
       } else {
-        // Se a action não retornar livro (erro ou não encontrado)
-        throw new Error('Livro não encontrado');
+        const newBook = await dispatch(addBookFromISBN(isbn));
+        
+        if (newBook) {
+          if (fromList && listId) {
+            await dispatch(addBookToList(listId, newBook._id));
+          }
+          Alert.alert('Sucesso! 📖', `Adicionado: "${newBook.title}"`, [
+            { text: 'Ler outro', onPress: () => setLoading(false) },
+            { text: 'Concluir', onPress: () => navigation.goBack() }
+          ]);
+        } else {
+          throw new Error('Não encontrado');
+        }
       }
-
     } catch (error) {
-      console.error('Erro scanner:', error);
-      Alert.alert(
-        'Não Encontrado',
-        'Não conseguimos encontrar informações para este código.',
-        [{ text: 'OK', onPress: () => setLoading(false) }]
-      );
-    } finally {
-      // Se não navegámos para outro ecrã, paramos o loading
-      // setLoading(false) é chamado nos botões de alerta para manter o loading visível durante o alerta
+      Alert.alert('Não encontrado', 'Não conseguimos encontrar informações para este código.', [
+        { text: 'Tentar novamente', onPress: () => setLoading(false) }
+      ]);
     }
   };
+
+  if (!hasPermission) return <View style={styles.center}><ActivityIndicator color={colors.primary}/></View>;
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       
-      {/* Header */}
+      {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back" size={24} color="#fff" />
           <Text style={styles.backButtonText}> Voltar</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Scan ISBN</Text>
+        <Text style={styles.title}>Scan ISBN</Text>
+        <View style={{width: 60}} />
       </View>
 
-      {/* WebView */}
-      <View style={styles.cameraContainer}>
-        <WebView
-          ref={webViewRef}
-          source={{ html: cameraHTML }}
-          style={styles.webview}
-          javaScriptEnabled={true}
-          domStorageEnabled={true}
-          mediaPlaybackRequiresUserAction={false}
-          allowsInlineMediaPlayback={true} // Importante para Android
-          onMessage={handleWebViewMessage}
-        />
-      </View>
+      <WebView
+        ref={webViewRef}
+        originWhitelist={['*']}
+        source={{ html: cameraHTML, baseUrl: 'https://localhost/' }}
+        style={styles.webview}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        mediaPlaybackRequiresUserAction={false}
+        allowsInlineMediaPlayback={true}
+        onPermissionRequest={(req) => req.grant(req.resources)}
+        androidLayerType="hardware"
+        onMessage={handleWebViewMessage}
+      />
 
-      {/* Loading Overlay */}
       {loading && (
         <View style={styles.loadingOverlay}>
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>A processar livro...</Text>
-          </View>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>A procurar livro...</Text>
         </View>
       )}
     </View>
@@ -220,64 +265,53 @@ const BarcodeScannerScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
+  container: { flex: 1, backgroundColor: '#000' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#E8D5A8' },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingTop: Platform.OS === 'android' ? 20 : 50,
     paddingHorizontal: 15,
     paddingBottom: 15,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    zIndex: 10,
   },
   backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     padding: 8,
-    marginRight: 10,
   },
   backButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-    flex: 1,
+  title: { 
+    color: '#fff', 
+    fontSize: 18, 
+    fontWeight: 'bold' 
   },
-  cameraContainer: {
-    flex: 1,
-  },
-  webview: {
-    flex: 1,
-    backgroundColor: '#000',
+  
+  webview: { 
+    flex: 1, 
+    backgroundColor: '#000' 
   },
   loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  loadingBox: {
-    backgroundColor: '#fff',
-    padding: 30,
-    borderRadius: 15,
-    alignItems: 'center',
+    zIndex: 20
   },
   loadingText: {
+    color: '#fff',
     marginTop: 15,
     fontSize: 16,
-    color: colors.textPrimary || '#000',
-    fontWeight: '600',
-  },
+    fontWeight: 'bold',
+  }
 });
 
 export default BarcodeScannerScreen;
