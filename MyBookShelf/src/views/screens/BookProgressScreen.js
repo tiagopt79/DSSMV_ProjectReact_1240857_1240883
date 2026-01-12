@@ -17,15 +17,13 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateReadingProgress } from '../../flux/actions';
 import colors from '../../theme/colors';
-
-// Importar API diretamente apenas para ler o histórico (leitura não precisa de estar no Redux store global)
 import { getReadingSessions } from '../../services/restDbApi';
 
 const BookProgressScreen = ({ route, navigation }) => {
   const dispatch = useDispatch();
   const { book: initialBook } = route.params;
 
-  // 1. Ligar ao Redux para ter sempre os dados mais frescos do livro
+  // Ligar ao Redux para ter sempre os dados mais frescos do livro
   const book = useSelector(state => 
     state.books.books.find(b => b._id === initialBook._id) || initialBook
   );
@@ -48,7 +46,6 @@ const BookProgressScreen = ({ route, navigation }) => {
   const loadHistory = async () => {
     try {
       setLoadingHistory(true);
-      // Busca sessões à API (não precisamos disto no Redux global, é específico deste ecrã)
       const sessions = await getReadingSessions(book._id);
       setHistory(sessions || []);
     } catch (error) {
@@ -68,7 +65,7 @@ const BookProgressScreen = ({ route, navigation }) => {
     const pageNum = parseInt(currentPage);
 
     if (isNaN(pageNum)) {
-      Alert.alert('Erro', 'Insira um número de página válido.');
+      Alert.alert('Erro', 'Insere um número de página válido.');
       return;
     }
 
@@ -84,19 +81,17 @@ const BookProgressScreen = ({ route, navigation }) => {
 
     try {
       setSaving(true);
-      // Dispara a action do Redux
       await dispatch(updateReadingProgress(book._id, pageNum, totalPages, notes));
 
       Alert.alert('Sucesso', 'Progresso registado!', [
         { 
           text: 'OK', 
           onPress: () => {
-            setNotes(''); // Limpa as notas
-            loadHistory(); // Atualiza a lista de histórico
+            setNotes('');
+            loadHistory();
             
-            // Se terminou o livro, volta para trás
             if (pageNum >= totalPages) {
-                navigation.goBack();
+              navigation.goBack();
             }
           } 
         }
@@ -115,35 +110,59 @@ const BookProgressScreen = ({ route, navigation }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#2A5288" />
+      <StatusBar barStyle="dark-content" backgroundColor="#E8D5A8" />
       
-      {/* HEADER (Estilo consistente com a app) */}
+      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back" size={26} color="#FFF" />
+          <MaterialIcons name="arrow-back" size={26} color="#2A5288" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Registar Leitura</Text>
+        <Text style={styles.headerTitle}>Registar Progresso</Text>
         <View style={{ width: 48 }} /> 
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
         {/* INFO DO LIVRO */}
-        <View style={styles.bookInfo}>
+        <View style={styles.bookInfoCard}>
           <Image 
             source={{ uri: book.cover || book.thumbnail || 'https://via.placeholder.com/100' }} 
             style={styles.cover} 
           />
-          <Text style={styles.title} numberOfLines={2}>{book.title}</Text>
-          <Text style={styles.author} numberOfLines={1}>{book.author}</Text>
-          <Text style={styles.currentStatusText}>
-             Atualmente na página {current} de {totalPages}
-          </Text>
+          <View style={styles.bookTextInfo}>
+            <Text style={styles.title} numberOfLines={2}>{book.title}</Text>
+            <Text style={styles.author} numberOfLines={1}>{book.author}</Text>
+            <View style={styles.pagesBadge}>
+              <MaterialIcons name="menu-book" size={14} color="#666" />
+              <Text style={styles.pagesText}>{totalPages || '?'} páginas</Text>
+            </View>
+          </View>
         </View>
 
-        {/* CARD INPUT */}
+        {/* PROGRESSO ATUAL */}
         <View style={styles.card}>
-          <Text style={styles.label}>Em que página estás hoje?</Text>
+          <View style={styles.progressHeader}>
+            <MaterialIcons name="trending-up" size={24} color="#2A5288" />
+            <Text style={styles.cardTitle}>Progresso Atual</Text>
+          </View>
+          
+          <View style={styles.progressVisual}>
+            <Text style={styles.bigPercentage}>{Math.round((current / totalPages) * 100)}%</Text>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${Math.round((current / totalPages) * 100)}%` }]} />
+            </View>
+            <Text style={styles.currentPageText}>Página {current} de {totalPages}</Text>
+          </View>
+        </View>
+
+        {/* REGISTAR NOVA PÁGINA */}
+        <View style={styles.card}>
+          <View style={styles.progressHeader}>
+            <MaterialIcons name="add-circle-outline" size={24} color="#7B1FA2" />
+            <Text style={styles.cardTitle}>Atualizar Progresso</Text>
+          </View>
+          
+          <Text style={styles.helperText}>Em que página estás agora?</Text>
           
           <View style={styles.pageInputContainer}>
             <TextInput
@@ -152,61 +171,90 @@ const BookProgressScreen = ({ route, navigation }) => {
               onChangeText={setCurrentPage}
               keyboardType="number-pad"
               placeholder={current.toString()}
+              placeholderTextColor="#999"
               maxLength={5}
             />
-            <Text style={styles.totalText}>/ {totalPages || '?'} páginas</Text>
+            <Text style={styles.totalText}>/ {totalPages || '?'}</Text>
           </View>
 
-          {/* BARRA DE PROGRESSO VISUAL */}
-          <View style={styles.progressBarBg}>
-            <View style={[styles.progressBarFill, { width: `${percentage}%` }]} />
-          </View>
-          <Text style={styles.percentageText}>{percentage}% Lido</Text>
+          {/* PREVIEW DO NOVO PROGRESSO */}
+          {currentPage && parseInt(currentPage) > current && (
+            <View style={styles.previewProgress}>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${percentage}%`, backgroundColor: '#7B1FA2' }]} />
+              </View>
+              <Text style={styles.previewText}>
+                {percentage}% completado • +{parseInt(currentPage) - current} páginas lidas
+              </Text>
+            </View>
+          )}
         </View>
 
-        {/* CARD NOTAS */}
+        {/* NOTAS */}
         <View style={styles.card}>
-          <Text style={styles.label}>Notas da sessão (opcional)</Text>
+          <View style={styles.progressHeader}>
+            <MaterialIcons name="edit-note" size={24} color="#FF9800" />
+            <Text style={styles.cardTitle}>Notas da Sessão (opcional)</Text>
+          </View>
+          
           <TextInput
             style={styles.notesInput}
             value={notes}
             onChangeText={setNotes}
-            placeholder="O que achaste desta parte? Escreve aqui..."
+            placeholder="O que achaste desta parte? Escreve aqui as tuas impressões..."
+            placeholderTextColor="#999"
             multiline
             numberOfLines={4}
             textAlignVertical="top"
           />
         </View>
 
-        {/* CARD HISTÓRICO */}
+        {/* HISTÓRICO */}
         <View style={styles.card}>
-          <Text style={styles.label}>Histórico de Leitura</Text>
+          <View style={styles.progressHeader}>
+            <MaterialIcons name="history" size={24} color="#4CAF50" />
+            <Text style={styles.cardTitle}>Histórico de Leitura</Text>
+          </View>
+          
           {loadingHistory ? (
-            <ActivityIndicator color="#2A5288" style={{ marginTop: 10 }} />
+            <ActivityIndicator color="#2A5288" style={{ marginTop: 20, marginBottom: 20 }} />
           ) : history.length === 0 ? (
-            <Text style={styles.emptyHistory}>Ainda sem registos.</Text>
+            <View style={styles.emptyState}>
+              <MaterialIcons name="history" size={48} color="#DDD" />
+              <Text style={styles.emptyText}>Ainda sem registos</Text>
+              <Text style={styles.emptySubtext}>Começa a registar o teu progresso!</Text>
+            </View>
           ) : (
-            history.map((item, index) => (
-              <View key={index} style={styles.historyItem}>
-                 <View style={styles.historyHeader}>
-                    <Text style={styles.historyDate}>
-                      {new Date(item.date).toLocaleDateString()}
-                    </Text>
+            <View style={styles.historyList}>
+              {history.slice(0, 5).reverse().map((item, index) => (
+                <View key={index} style={styles.historyItem}>
+                  <View style={styles.historyTop}>
+                    <View style={styles.historyDateBadge}>
+                      <MaterialIcons name="calendar-today" size={12} color="#666" />
+                      <Text style={styles.historyDate}>
+                        {new Date(item.date).toLocaleDateString('pt-PT', { 
+                          day: '2-digit', 
+                          month: 'short' 
+                        })}
+                      </Text>
+                    </View>
                     <Text style={styles.historyPages}>
-                      Pág {item.startPage || '?'} ➔ <Text style={{fontWeight:'bold'}}>{item.endPage}</Text>
+                      Pág. {item.startPage || current} → <Text style={{fontWeight:'bold', color: '#4CAF50'}}>{item.endPage}</Text>
                     </Text>
-                 </View>
-                 {item.notes ? (
-                   <Text style={styles.historyNotes}>"{item.notes}"</Text>
-                 ) : null}
-              </View>
-            ))
+                  </View>
+                  {item.notes ? (
+                    <Text style={styles.historyNotes}>"{item.notes}"</Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
           )}
         </View>
 
+        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* BOTÃO SALVAR (Fixo em baixo) */}
+      {/* BOTÃO SALVAR FIXO */}
       <View style={styles.footer}>
         <TouchableOpacity 
           style={[styles.saveButton, saving && styles.saveButtonDisabled]} 
@@ -217,8 +265,8 @@ const BookProgressScreen = ({ route, navigation }) => {
             <ActivityIndicator color="#FFF" />
           ) : (
             <>
-              <MaterialIcons name="save" size={24} color="#FFF" style={{marginRight: 8}} />
-              <Text style={styles.saveButtonText}>Salvar Progresso</Text>
+              <MaterialIcons name="check-circle" size={24} color="#FFF" />
+              <Text style={styles.saveButtonText}>Guardar Progresso</Text>
             </>
           )}
         </TouchableOpacity>
@@ -230,154 +278,291 @@ const BookProgressScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3E5AB',
+    backgroundColor: '#E8D5A8',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#254E70',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? 20 : 50,
+    paddingBottom: 15,
+    backgroundColor: '#E8D5A8',
   },
   backButton: {
-    padding: 8,
-    width: 40,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  content: {
-    flex: 1,
+    color: '#2A5288',
   },
   scrollContent: {
-    padding: 16,
+    padding: 20,
+    paddingBottom: 40,
   },
+  
+  // CARD DO LIVRO
   bookInfoCard: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
-    marginBottom: 16,
-    elevation: 2,
+    marginBottom: 20,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
-  bookCover: {
+  cover: {
     width: 80,
     height: 120,
     borderRadius: 8,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: '#F0F0F0',
   },
-  bookDetails: {
+  bookTextInfo: {
     flex: 1,
     marginLeft: 16,
     justifyContent: 'center',
   },
-  bookTitle: {
-    fontSize: 18,
+  title: {
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#254E70',
+    color: '#2A5288',
+    marginBottom: 6,
+  },
+  author: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+  },
+  pagesBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  pagesText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+  },
+  
+  // CARDS GERAIS
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 16,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 10,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2A5288',
+  },
+  
+  // PROGRESSO VISUAL
+  progressVisual: {
+    alignItems: 'center',
+  },
+  bigPercentage: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#2A5288',
+    marginBottom: 12,
+  },
+  progressBarBg: {
+    width: '100%',
+    height: 12,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 6,
+    overflow: 'hidden',
     marginBottom: 8,
   },
-  bookAuthor: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 4,
-  },
-  bookPages: {
-    fontSize: 12,
-    color: '#999999',
-  },
-  progressCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#254E70',
-    marginBottom: 12,
-  },
-  progressBarContainer: {
-    marginBottom: 12,
-  },
-  progressBar: {
-    height: 24,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  progressFill: {
+  progressBarFill: {
     height: '100%',
     backgroundColor: '#4CAF50',
-    borderRadius: 12,
+    borderRadius: 6,
   },
-  progressPercentage: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#254E70',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  progressPages: {
+  currentPageText: {
     fontSize: 14,
-    color: '#666666',
-    textAlign: 'center',
+    color: '#666',
+    fontWeight: '600',
   },
-  updateCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
-  },
+  
+  // INPUT DE PÁGINA
   helperText: {
     fontSize: 14,
-    color: '#666666',
+    color: '#666',
     marginBottom: 12,
-    fontStyle: 'italic',
   },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#CCCCCC',
-    borderRadius: 8,
+  pageInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+  },
+  pageInput: {
+    flex: 1,
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#2A5288',
+    textAlign: 'center',
+  },
+  totalText: {
+    fontSize: 18,
+    color: '#999',
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  
+  // PREVIEW DO PROGRESSO
+  previewProgress: {
+    marginTop: 16,
     padding: 12,
-    fontSize: 16,
-    color: '#254E70',
-    marginBottom: 12,
+    backgroundColor: '#F3E5F5',
+    borderRadius: 8,
   },
-  textArea: {
-    height: 100,
+  previewText: {
+    fontSize: 13,
+    color: '#7B1FA2',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  
+  // NOTAS
+  notesInput: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: '#333',
+    minHeight: 100,
     textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  
+  // HISTÓRICO
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#999',
+    marginTop: 12,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: '#BBB',
+    marginTop: 4,
+  },
+  historyList: {
+    marginTop: 8,
+  },
+  historyItem: {
+    backgroundColor: '#F9F9F9',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  historyTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  historyDateBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  historyDate: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+  },
+  historyPages: {
+    fontSize: 13,
+    color: '#666',
+  },
+  historyNotes: {
+    fontSize: 13,
+    color: '#666',
+    fontStyle: 'italic',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  
+  // FOOTER
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#E8D5A8',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
   },
   saveButton: {
-    backgroundColor: '#6B4FA0',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: '#2A5288',
+    borderRadius: 12,
+    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    justifyContent: 'center',
+    gap: 10,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
   },
   saveButtonDisabled: {
     backgroundColor: '#9E9E9E',
@@ -386,77 +571,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  historyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 2.22,
-  },
-  historyTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  loader: {
-    marginVertical: 32,
-  },
-  emptyHistory: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  emptyHistoryIcon: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  emptyHistoryText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#666666',
-    marginBottom: 4,
-  },
-  emptyHistorySubtext: {
-    fontSize: 14,
-    color: '#999999',
-    textAlign: 'center',
-  },
-  historyList: {
-    marginTop: 8,
-  },
-  historyItem: {
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  historyDate: {
-    fontSize: 14,
-    color: '#254E70',
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  historyPages: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 4,
-  },
-  historyNotes: {
-    fontSize: 12,
-    color: '#999999',
-    fontStyle: 'italic',
-    marginTop: 4,
   },
 });
 

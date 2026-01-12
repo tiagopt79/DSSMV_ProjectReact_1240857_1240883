@@ -11,14 +11,12 @@ import {
   StatusBar,
   PermissionsAndroid
 } from 'react-native';
-import { WebView } from 'react-native-webview';
+import WebView from 'react-native-webview';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { useDispatch, useSelector } from 'react-redux';
-import { addBookFromISBN, addBookToList } from '../../flux/actions';
+import { useSelector } from 'react-redux';
 import colors from '../../theme/colors';
 
 const BarcodeScannerScreen = ({ navigation, route }) => {
-  const dispatch = useDispatch();
   const { fromList, listId, listName } = route.params || {};
   
   const [loading, setLoading] = useState(false);
@@ -186,42 +184,43 @@ const BarcodeScannerScreen = ({ navigation, route }) => {
 
   const handleISBNDetected = async (isbn) => {
     setLoading(true);
-    try {
-      const existingBook = libraryBooks.find(b => 
-        (b.isbn === isbn) || (b.isbn_13 && b.isbn_13.includes(isbn))
-      );
+    
+    // Pequeno delay para garantir que o loading overlay aparece
+    setTimeout(() => {
+      try {
+        // Verifica se o livro já existe na biblioteca
+        const existingBook = libraryBooks.find(b => 
+          (b.isbn === isbn) || (b.isbn_13 && b.isbn_13.includes(isbn))
+        );
 
-      if (existingBook) {
-        if (fromList && listId) {
-          await dispatch(addBookToList(listId, existingBook._id));
-          Alert.alert('Sucesso', `"${existingBook.title}" adicionado à lista!`, [
-            { text: 'OK', onPress: () => navigation.goBack() }
-          ]);
+        setLoading(false);
+
+        if (existingBook) {
+          // Livro já existe - navega para os detalhes com o objeto completo
+          navigation.navigate('BookDetails', {
+            book: existingBook,
+            fromList,
+            listId,
+            listName
+          });
         } else {
-          Alert.alert('Já existe', `"${existingBook.title}" já está na tua biblioteca.`, [
-            { text: 'OK', onPress: () => setLoading(false) }
-          ]);
+          // Livro não existe - navega para BookDetails passando apenas o ISBN
+          // O BookDetailsScreen vai fazer o fetch dos dados
+          navigation.navigate('BookDetails', {
+            scannedISBN: isbn,
+            fromScanner: true,
+            fromList,
+            listId,
+            listName
+          });
         }
-      } else {
-        const newBook = await dispatch(addBookFromISBN(isbn));
-        
-        if (newBook) {
-          if (fromList && listId) {
-            await dispatch(addBookToList(listId, newBook._id));
-          }
-          Alert.alert('Sucesso! 📖', `Adicionado: "${newBook.title}"`, [
-            { text: 'Ler outro', onPress: () => setLoading(false) },
-            { text: 'Concluir', onPress: () => navigation.goBack() }
-          ]);
-        } else {
-          throw new Error('Não encontrado');
-        }
+      } catch (error) {
+        setLoading(false);
+        Alert.alert('Erro', 'Ocorreu um erro ao processar o código.', [
+          { text: 'OK' }
+        ]);
       }
-    } catch (error) {
-      Alert.alert('Não encontrado', 'Não conseguimos encontrar informações para este código.', [
-        { text: 'Tentar novamente', onPress: () => setLoading(false) }
-      ]);
-    }
+    }, 100);
   };
 
   if (!hasPermission) return <View style={styles.center}><ActivityIndicator color={colors.primary}/></View>;

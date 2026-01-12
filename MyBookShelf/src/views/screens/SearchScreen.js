@@ -38,13 +38,21 @@ const SearchScreen = ({ navigation, route }) => {
   };
 
   const handleBookPress = (book) => {
-    navigation.navigate('LibraryBookDetails', { 
-      book: book,
-      fromList: fromList, 
-      listId: listId,
-      listName: listName,
-      isNewBook: true 
-    });
+    // Se veio de uma lista personalizada, vai para LibraryBookDetails
+    if (fromList && listId) {
+      navigation.navigate('LibraryBookDetails', { 
+        book: book,
+        fromList: fromList, 
+        listId: listId,
+        listName: listName,
+        isNewBook: true 
+      });
+    } else {
+      // Se não veio de lista (pesquisa normal da home), vai para BookDetails
+      navigation.navigate('BookDetails', { 
+        book: book
+      });
+    }
   };
 
   return (
@@ -114,7 +122,7 @@ const SearchScreen = ({ navigation, route }) => {
             <View style={styles.centerContainer}>
                <MaterialIcons name="menu-book" size={60} color="#DDD" />
                <Text style={styles.emptyText}>
-                 {error ? error : "Escreva o nome de um livro para começar."}
+                 {error ? error : "Escreve o nome de um livro para começar."}
                </Text>
             </View>
           }

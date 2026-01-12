@@ -2,39 +2,94 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, StatusBar } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useDispatch, useSelector } from 'react-redux';
-import { addBook, updateBook, toggleFavorite } from '../../flux/actions'; // Actions Redux
+import { addBook, updateBook, toggleFavorite } from '../../flux/actions';
 import colors from '../../theme/colors';
 
 const BookDetailsScreen = ({ route, navigation }) => {
   const dispatch = useDispatch();
-  const { book: initialBook } = route.params || {};
+  const { book: initialBook, scannedISBN, fromScanner, fromList, listId, listName } = route.params || {};
   
-  // Acedemos à lista de livros do Redux
   const libraryBooks = useSelector(state => state.books.books);
   
-  const [book, setBook] = useState(initialBook);
+  const [book, setBook] = useState(initialBook || null);
   const [loading, setLoading] = useState(false);
+  const [fetchingBook, setFetchingBook] = useState(!!scannedISBN && !initialBook);
 
-  // Verifica INSTANTANEAMENTE se o livro está na biblioteca olhando para o Redux
-  const libraryBook = libraryBooks.find(b => 
-    (b.isbn && b.isbn === book.isbn) || 
-    (b._id && b._id === book._id) ||
-    (b.title === book.title && b.author === book.author) // Fallback
-  );
+  // Se veio do scanner com apenas ISBN, buscar dados do livro
+  useEffect(() => {
+    const fetchBookData = async () => {
+      if (scannedISBN && !initialBook && !book) {
+        console.log('🔍 Iniciando busca do ISBN:', scannedISBN);
+        setFetchingBook(true);
+        
+        try {
+          // Busca direto da API Google Books
+          const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${scannedISBN}`);
+          const data = await response.json();
+          
+          console.log('📡 Resposta da API:', data);
+          
+          if (data.items && data.items.length > 0) {
+            const bookInfo = data.items[0].volumeInfo;
+            
+            const bookData = {
+              title: bookInfo.title || 'Sem título',
+              author: bookInfo.authors ? bookInfo.authors[0] : 'Desconhecido',
+              authors: bookInfo.authors || [],
+              isbn: scannedISBN,
+              isbn_13: bookInfo.industryIdentifiers?.find(id => id.type === 'ISBN_13')?.identifier || scannedISBN,
+              cover: bookInfo.imageLinks?.thumbnail || bookInfo.imageLinks?.smallThumbnail || null,
+              thumbnail: bookInfo.imageLinks?.thumbnail || null,
+              description: bookInfo.description || '',
+              pageCount: bookInfo.pageCount || 0,
+              publisher: bookInfo.publisher || '',
+              publishedDate: bookInfo.publishedDate || '',
+              categories: bookInfo.categories || [],
+              language: bookInfo.language || 'pt',
+            };
+            
+            console.log('✅ Livro processado:', bookData.title);
+            setBook(bookData);
+          } else {
+            console.log('❌ Nenhum livro encontrado');
+            Alert.alert('Não encontrado', 'Não conseguimos encontrar informações para este ISBN.', [
+              { text: 'OK', onPress: () => navigation.goBack() }
+            ]);
+          }
+        } catch (error) {
+          console.error('❌ Erro ao buscar:', error);
+          Alert.alert('Erro', 'Ocorreu um erro ao buscar o livro: ' + error.message, [
+            { text: 'OK', onPress: () => navigation.goBack() }
+          ]);
+        } finally {
+          setFetchingBook(false);
+        }
+      }
+    };
+    
+    fetchBookData();
+  }, [scannedISBN, initialBook]);
+
+  // Verifica se o livro está na biblioteca
+  const libraryBook = book ? libraryBooks.find(b => 
+    (b.isbn && book.isbn && b.isbn === book.isbn) || 
+    (b._id && book._id && b._id === book._id) ||
+    (b.title === book.title && b.author === book.author)
+  ) : null;
 
   const isInLibrary = !!libraryBook;
   const currentStatus = libraryBook ? libraryBook.status : null;
 
-  // Atualiza o estado local 'book' se ele mudar no Redux (reatividade!)
+  // Atualiza o estado local se o livro mudar no Redux
   useEffect(() => {
     if (libraryBook) {
       setBook(prev => ({ ...prev, ...libraryBook }));
     }
   }, [libraryBook]);
 
-  if (!initialBook) { navigation.goBack(); return null; }
-
   const handleAction = async (actionType, status) => {
+    if (!book) return;
+    
     setLoading(true);
     try {
       if (!isInLibrary) {
@@ -62,6 +117,11 @@ const BookDetailsScreen = ({ route, navigation }) => {
         }
       }
       
+      // Se veio de uma lista e adicionou, também adiciona à lista
+      if (fromList && listId && !isInLibrary) {
+        // Aqui podes adicionar lógica para adicionar à lista se necessário
+      }
+      
       // Navegação opcional após sucesso
       if (status === 'reading') setTimeout(() => navigation.navigate('ReadingBooks'), 500);
       
@@ -72,6 +132,26 @@ const BookDetailsScreen = ({ route, navigation }) => {
       setLoading(false);
     }
   };
+
+  // Se ainda está a buscar dados, mostra loading
+  if (fetchingBook) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ marginTop: 15, fontSize: 16, color: colors.primary, fontWeight: 'bold' }}>A procurar livro...</Text>
+      </View>
+    );
+  }
+
+  // Se não tem livro depois do fetch, não renderiza nada (o alert já foi mostrado)
+  if (!book) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      </View>
+    );
+  }
 
   const coverUrl = book.cover || book.coverUrl || book.thumbnail || null;
   const getStatusLabel = (s) => ({ reading: 'A Ler', read: 'Lido', wishlist: 'Wishlist', toRead: 'Para Ler' }[s] || s);
@@ -100,6 +180,12 @@ const BookDetailsScreen = ({ route, navigation }) => {
               <View style={styles.inLibraryBadge}>
                 <MaterialIcons name="check-circle" size={16} color={colors.success} />
                 <Text style={styles.inLibraryText}>Na biblioteca: {getStatusLabel(currentStatus)}</Text>
+              </View>
+            )}
+            {fromScanner && !isInLibrary && (
+              <View style={[styles.inLibraryBadge, { backgroundColor: '#FFF3E0' }]}>
+                <MaterialIcons name="qr-code-scanner" size={16} color="#FF9800" />
+                <Text style={[styles.inLibraryText, { color: '#FF9800' }]}>Escaneado - Não está na biblioteca</Text>
               </View>
             )}
           </View>

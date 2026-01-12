@@ -53,6 +53,8 @@ export const addBookFromISBN = (isbn) => async (dispatch) => {
       ...bookInfo,
       status: 'toRead',
       currentPage: 0,
+      current_page: 0,
+      progress: 0,
       isFavorite: false,
       dateAdded: new Date().toISOString(),
     });
@@ -67,8 +69,29 @@ export const addBookFromISBN = (isbn) => async (dispatch) => {
   }
 };
 
-export const updateBook = (bookId, updates) => async (dispatch) => {
+export const updateBook = (bookId, updates) => async (dispatch, getState) => {
   try {
+    // Busca o livro atual do estado
+    const currentBook = getState().books.books.find(b => b._id === bookId);
+    
+    // Se está a mudar para 'reading' e o livro estava 'read' ou tinha progresso, reseta
+    if (updates.status === 'reading' && currentBook) {
+      const wasRead = currentBook.status === 'read';
+      const hadProgress = (currentBook.currentPage || currentBook.current_page || 0) > 0;
+      
+      if (wasRead || hadProgress) {
+        // Reset do progresso quando volta a ler
+        updates = {
+          ...updates,
+          currentPage: 0,
+          current_page: 0,
+          progress: 0,
+          finished_date: null,
+          last_read: new Date().toISOString(),
+        };
+      }
+    }
+    
     await RestDB.updateBook(bookId, updates);
     dispatch({
       type: types.UPDATE_BOOK,
@@ -90,17 +113,19 @@ export const deleteBook = (bookId) => async (dispatch) => {
 
 export const toggleFavorite = (bookId, isFavorite) => async (dispatch) => {
   try {
-    // Nota: passamos o novo estado desejado (true/false)
     await RestDB.updateBook(bookId, { isFavorite });
-    // Mas no reducer, o TOGGLE apenas inverte, então o payload é só o ID
     dispatch({ type: types.TOGGLE_FAVORITE, payload: bookId });
   } catch (error) {
     console.error('Erro favorito:', error);
   }
 };
 
-export const updateReadingProgress = (bookId, currentPage, totalPages, notes = '') => async (dispatch) => {
+export const updateReadingProgress = (bookId, currentPage, totalPages, notes = '') => async (dispatch, getState) => {
   try {
+    // Busca o livro atual para pegar a página anterior
+    const currentBook = getState().books.books.find(b => b._id === bookId);
+    const previousPage = currentBook?.currentPage || currentBook?.current_page || 0;
+    
     const updates = {
       currentPage,
       current_page: currentPage,
@@ -116,16 +141,21 @@ export const updateReadingProgress = (bookId, currentPage, totalPages, notes = '
     await RestDB.updateBook(bookId, updates);
     dispatch({ type: types.UPDATE_BOOK, payload: { bookId, updates } });
     
-    if (currentPage > 0) {
+    // Adiciona sessão de leitura com os campos obrigatórios
+    if (currentPage > previousPage) {
       const session = {
         bookId,
         date: new Date().toISOString(),
+        startPage: previousPage,
         endPage: currentPage,
-        notes,
+        pagesRead: currentPage - previousPage,
+        notes: notes || '',
       };
+      
       await RestDB.addReadingSession(session);
     }
   } catch (error) {
     console.error('Erro progresso:', error);
+    throw error;
   }
 };
