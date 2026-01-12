@@ -66,10 +66,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
                     ...book,
                     status: 'wishlist', // Status padrão
                 }));
-                // Assumindo que a tua action addBook devolve o livro ou payload (ajustar conforme thunk)
-                // Se o thunk não retornar, teremos de confiar na API direta para obter o ID
-                // Para simplificar e garantir o ID, podemos usar a API direta aqui dentro do try
-                // Mas o ideal é a action retornar o novo livro.
+                
                 if (newBookAction) bookIdToAdd = newBookAction._id; 
             }
         }
@@ -165,7 +162,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
     }
   };
 
-  // Funções auxiliares de visualização (mantêm-se iguais)
+  // Funções auxiliares de visualização
   const getLanguage = () => book?.language ? (typeof book.language === 'string' ? book.language.toUpperCase() : 'PT') : 'PT';
   const getYear = () => book?.publishedDate ? new Date(book.publishedDate).getFullYear() : (book?.publishYear || 'N/A');
   const getPublisher = () => book?.publisher || 'N/A';
@@ -214,6 +211,7 @@ const LibraryBookDetailsScreen = ({ route, navigation }) => {
           <View style={styles.decorativeCircleMedium} />
 
           <View style={styles.bookCardContent}>
+            {/* CORREÇÃO AQUI: Propriedades de sombra movidas para o View container */}
             <View style={styles.coverContainer}>
               <Image
                 source={{ uri: book?.coverUrl || book?.cover || book?.thumbnail || 'https://via.placeholder.com/105x158' }}
@@ -472,18 +470,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 18,
   },
+  // --- ESTILOS CORRIGIDOS ---
   coverContainer: {
     position: 'relative',
-  },
-  bookCover: {
     width: 105,
     height: 158,
     borderRadius: 14,
+    backgroundColor: '#fff',
+    // Propriedades de sombra movidas para a View
     elevation: 6,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
+  },
+  bookCover: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 14,
+    // Sem 'elevation' aqui
   },
   coverGloss: {
     position: 'absolute',
@@ -495,6 +500,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 14,
     borderTopRightRadius: 14,
   },
+  // -------------------------
   bookInfo: {
     flex: 1,
     marginLeft: 16,
