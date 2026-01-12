@@ -176,6 +176,9 @@ const BookDetailsScreen = ({ route, navigation }) => {
           <View style={styles.infoSection}>
             <Text style={styles.title}>{book.title}</Text>
             <Text style={styles.author}>{book.author || book.authors?.[0]}</Text>
+            {(book.pageCount > 0 || book.pages > 0) && (
+              <Text style={styles.pages}>{book.pageCount || book.pages} páginas</Text>
+            )}
             {isInLibrary && (
               <View style={styles.inLibraryBadge}>
                 <MaterialIcons name="check-circle" size={16} color={colors.success} />
@@ -211,6 +214,13 @@ const BookDetailsScreen = ({ route, navigation }) => {
            <MaterialIcons name="library-add" size={20} color={colors.white} />
            <Text style={styles.bigButtonText}>Adicionar à Biblioteca</Text>
         </TouchableOpacity>
+
+        {/* SINOPSE */}
+        {book.description && (
+          <View style={styles.synopsisCard}>
+            <Text style={styles.synopsisText}>{book.description}</Text>
+          </View>
+        )}
 
         <View style={{height: 50}} />
       </ScrollView>
@@ -345,13 +355,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2A5288',
-    marginHorizontal: 20,
-    marginBottom: 12,
-  },
   shelfButtons: {
     flexDirection: 'row',
     marginHorizontal: 20,
@@ -375,6 +378,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2A5288',
   },
+  // SINOPSE
   synopsisCard: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
@@ -386,62 +390,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 0, 0, 0.06)',
   },
   synopsisText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#333333',
-    lineHeight: 20,
+    lineHeight: 22,
     textAlign: 'justify',
-  },
-  additionalInfo: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 8,
-  },
-  infoText: {
-    fontSize: 13,
-    color: '#666666',
-  },
-  categoriesCard: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 20,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 12,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-  },
-  categoriesTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2A5288',
-    marginBottom: 10,
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  categoryChip: {
-    backgroundColor: '#E3F2FD',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-  },
-  categoryText: {
-    fontSize: 11,
-    color: '#1976D2',
-    fontWeight: '600',
   },
 });
 

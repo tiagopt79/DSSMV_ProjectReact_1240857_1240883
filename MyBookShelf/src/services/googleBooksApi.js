@@ -7,19 +7,47 @@ export const searchByTitle = async (title) => {
       ? `${BASE_URL}?q=${encodeURIComponent(title)}&maxResults=20&key=${API_KEY}`
       : `${BASE_URL}?q=${encodeURIComponent(title)}&maxResults=20`;
     
+    console.log('🔍 Pesquisando:', title);
+    console.log('📡 URL:', url);
+    
     const response = await fetch(url);
     
+    // LOG DO STATUS DA RESPOSTA
+    console.log('📊 Status HTTP:', response.status);
+    console.log('📋 Headers:', JSON.stringify(response.headers));
+    
     if (!response.ok) {
-      throw new Error('Erro ao buscar livros');
+      // CAPTURA O ERRO DETALHADO DA API
+      const errorText = await response.text();
+      console.error('❌ Resposta de erro:', errorText);
+      
+      // ERROS ESPECÍFICOS
+      if (response.status === 403) {
+        throw new Error('API Key inválida ou quota excedida. Verifica a tua chave da Google Books API.');
+      }
+      if (response.status === 400) {
+        throw new Error('Pedido inválido. Verifica o termo de pesquisa.');
+      }
+      if (response.status === 429) {
+        throw new Error('Muitos pedidos. Aguarda alguns minutos e tenta novamente.');
+      }
+      if (response.status >= 500) {
+        throw new Error('Serviço temporariamente indisponível. Tenta novamente mais tarde.');
+      }
+      
+      throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
     
+    console.log('✅ Resposta recebida:', data.totalItems || 0, 'resultados');
+    
     if (!data.items || data.items.length === 0) {
+      console.log('⚠️ Nenhum resultado encontrado');
       return [];
     }
 
-    return data.items.map((item) => {
+    const books = data.items.map((item) => {
       const volumeInfo = item.volumeInfo;
       
       return {
@@ -74,9 +102,20 @@ export const searchByTitle = async (title) => {
         notes: '',
       };
     });
+    
+    console.log('📚 Livros processados:', books.length);
+    return books;
+    
   } catch (error) {
-    console.error('Erro ao buscar livros:', error);
-    throw error;
+    console.error('❌ ERRO DETALHADO em searchByTitle:', error);
+    
+    // SE FOR ERRO DE REDE
+    if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
+      throw new Error('Sem conexão à Internet. Verifica a tua ligação e tenta novamente.');
+    }
+    
+    // REPASSAR O ERRO COM MAIS CONTEXTO
+    throw new Error(error.message || 'Erro desconhecido ao buscar livros');
   }
 };
 
@@ -86,16 +125,31 @@ export const searchByISBN = async (isbn) => {
       ? `${BASE_URL}?q=isbn:${isbn}&key=${API_KEY}`
       : `${BASE_URL}?q=isbn:${isbn}`;
     
+    console.log('🔍 Pesquisando ISBN:', isbn);
+    console.log('📡 URL:', url);
+    
     const response = await fetch(url);
     
+    console.log('📊 Status HTTP:', response.status);
+    
     if (!response.ok) {
-      throw new Error('Erro ao buscar livro por ISBN');
+      const errorText = await response.text();
+      console.error('❌ Resposta de erro:', errorText);
+      
+      if (response.status === 403) {
+        throw new Error('API Key inválida ou quota excedida.');
+      }
+      if (response.status === 429) {
+        throw new Error('Muitos pedidos. Aguarda alguns minutos.');
+      }
+      
+      throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
     
     if (!data.items || data.items.length === 0) {
-      throw new Error('Livro não encontrado');
+      throw new Error('Livro não encontrado com este ISBN');
     }
 
     const item = data.items[0];
@@ -140,7 +194,12 @@ export const searchByISBN = async (isbn) => {
       notes: '',
     };
   } catch (error) {
-    console.error('Erro ao buscar por ISBN:', error);
+    console.error('❌ ERRO DETALHADO em searchByISBN:', error);
+    
+    if (error.message.includes('Network request failed') || error.message.includes('Failed to fetch')) {
+      throw new Error('Sem conexão à Internet.');
+    }
+    
     throw error;
   }
 };
@@ -154,7 +213,13 @@ export const getBookDetails = async (bookId) => {
     const response = await fetch(url);
     
     if (!response.ok) {
-      throw new Error('Erro ao buscar detalhes');
+      console.error('Erro ao buscar detalhes:', response.status);
+      return {
+        description: '',
+        pageCount: 0,
+        categories: [],
+        previewLink: '',
+      };
     }
 
     const data = await response.json();
