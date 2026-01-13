@@ -10,7 +10,7 @@ import colors from '../../theme/colors';
 
 const BookCard = ({ book, onPress, hideStatus = false }) => {
   
-  const shouldShorwStatus = !hideStatus && book.status && book.status !== '';
+  const shouldShowStatus = !hideStatus && book.status && book.status !== '';
 
   return (
     <TouchableOpacity 

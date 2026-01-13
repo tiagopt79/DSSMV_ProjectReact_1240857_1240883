@@ -4,6 +4,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useDispatch, useSelector } from 'react-redux';
 import { addBook, updateBook, toggleFavorite } from '../../flux/actions';
 import colors from '../../theme/colors';
+import { GOOGLE_BOOKS_BASE_URL } from '../../consts/config';
 
 const BookDetailsScreen = ({ route, navigation }) => {
   const dispatch = useDispatch();
@@ -24,7 +25,7 @@ const BookDetailsScreen = ({ route, navigation }) => {
         
         try {
           
-          const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${scannedISBN}`);
+          const response = await fetch(`${GOOGLE_BOOKS_BASE_URL}?q=isbn:${scannedISBN}`);
           const data = await response.json();
           
           console.log('📡 Resposta da API:', data);
