@@ -6,7 +6,6 @@ import store from './src/flux/store';
 
 import HomeScreen from './src/views/screens/HomeScreen';
 import SearchScreen from './src/views/screens/SearchScreen';
-import AddBookScreen from './src/views/screens/AddBookScreen';
 import BarcodeScannerScreen from './src/views/screens/BarcodeScannerScreen';
 import BookDetailsScreen from './src/views/screens/BookDetailsScreen';
 import MyLibraryScreen from './src/views/screens/MyLibraryScreen';
@@ -56,8 +55,6 @@ const AppContent = () => {
         return <HomeScreen {...navigationProps} />;
       case 'Search':
         return <SearchScreen {...navigationProps} />;
-      case 'AddBook':
-        return <AddBookScreen {...navigationProps} />;
       case 'BarcodeScanner':
         return <BarcodeScannerScreen {...navigationProps} />;
       case 'BookDetails':

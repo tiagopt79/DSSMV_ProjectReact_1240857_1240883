@@ -70,7 +70,7 @@ const BarcodeScannerScreen = ({ navigation, route }) => {
             height: 100%; 
             object-fit: cover; 
         }
-        /* Caixa de Scan (Visual) */
+        /* Caixa de Scan */
         .scan-box {
             position: absolute;
             width: 70%;
@@ -83,7 +83,6 @@ const BarcodeScannerScreen = ({ navigation, route }) => {
             justify-content: center;
             align-items: center;
         }
-        /* Linha Vermelha de Scan */
         .scan-line {
             width: 90%;
             height: 2px;
@@ -113,8 +112,6 @@ const BarcodeScannerScreen = ({ navigation, route }) => {
 
         async function start() {
           try {
-            // CONFIGURAÇÃO OTIMIZADA: 640x480 (VGA)
-            // Isto remove o "piscar" porque o processador não sobrecarrega
             const constraints = { 
                 video: { 
                     facingMode: 'environment',
@@ -137,18 +134,13 @@ const BarcodeScannerScreen = ({ navigation, route }) => {
 
         function scanLoop() {
            const now = Date.now();
-           
-           // THROTTLE: Só lê a cada 250ms (4 vezes por segundo)
-           // Isto estabiliza a imagem e poupa bateria
            if (now - lastScanTime > 250) {
                
                codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
                   if (result) {
                      const code = result.text;
-                     // Limpeza básica do código
                      const clean = code.replace(/-/g, '');
                      
-                     // Valida se é ISBN (apenas números, 10 ou 13 dígitos)
                      if (/^\\d{9,13}[\\dX]?$/.test(clean)) {
                         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'barcode', data: clean }));
                      }
